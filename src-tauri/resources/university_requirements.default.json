@@ -1,0 +1,11 @@
+{
+  "default_required": [
+    "Passport",
+    "Academic Transcripts",
+    "English Score",
+    "SOP",
+    "CV",
+    "LOR"
+  ],
+  "overrides": {}
+}
