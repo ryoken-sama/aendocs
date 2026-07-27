@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSettings } from "../../hooks/useSettings";
 import { FolderPicker } from "./FolderPicker";
 import { TestLoginButton } from "./TestLoginButton";
+import { BackButton } from "../layout/BackButton";
 
 export function SettingsScreen() {
   const { email, setEmail, outputFolder, setOutputFolder, loading, saving, error, save } =
@@ -22,12 +23,18 @@ export function SettingsScreen() {
   }
 
   if (loading) {
-    return <div className="p-6 text-sm text-slate-500">Loading settings…</div>;
+    return (
+      <div className="mx-auto max-w-xl p-6">
+        <BackButton />
+        <p className="mt-4 text-sm text-slate-500">Loading settings…</p>
+      </div>
+    );
   }
 
   return (
     <div className="mx-auto max-w-xl p-6">
-      <h2 className="text-xl font-semibold">Settings</h2>
+      <BackButton />
+      <h2 className="mt-3 text-xl font-semibold">Settings</h2>
       <form onSubmit={handleSave} className="mt-6 flex flex-col gap-5">
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium">aenapply.com email</span>

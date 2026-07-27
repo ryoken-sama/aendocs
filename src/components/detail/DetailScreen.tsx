@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { getStudentDetail } from "../../lib/tauri";
-import { useAppContext } from "../../context/AppContext";
 import type { DetailDocEntry, StudentSummary } from "../../types";
 import { StudentInfoCard } from "./StudentInfoCard";
 import { DocumentList } from "./DocumentList";
 import { DownloadActionPanel } from "./DownloadActionPanel";
+import { BackButton } from "../layout/BackButton";
 
 export function DetailScreen({ student }: { student: StudentSummary }) {
-  const { goToSearch } = useAppContext();
   const [documents, setDocuments] = useState<DetailDocEntry[]>([]);
   // Keyed by the document's URL-derived filename (the key shared with ZIP
   // entries at download time) — never by display name, which the ZIP
@@ -49,9 +48,7 @@ export function DetailScreen({ student }: { student: StudentSummary }) {
 
   return (
     <div className="mx-auto max-w-2xl p-6">
-      <button onClick={goToSearch} className="text-sm text-blue-600 hover:underline">
-        ← Back to Search
-      </button>
+      <BackButton />
 
       <h2 className="mt-3 text-xl font-semibold">Student Detail</h2>
 
