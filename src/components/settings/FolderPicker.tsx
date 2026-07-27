@@ -20,12 +20,12 @@ export function FolderPicker({ value, onChange }: FolderPickerProps) {
         readOnly
         value={value}
         placeholder="Choose an output folder..."
-        className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+        className="flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-primary"
       />
       <button
         type="button"
         onClick={pick}
-        className="rounded-md bg-slate-200 px-3 py-2 text-sm font-medium hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600"
+        className="rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-ink hover:bg-white/5"
       >
         Browse…
       </button>

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "AEN Docs",
+  "productName": "AEN Document Manager",
   "version": "0.1.0",
   "identifier": "com.aen.docs",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "AEN Docs",
+        "title": "AEN Document Manager",
         "width": 1200,
         "height": 800
       }

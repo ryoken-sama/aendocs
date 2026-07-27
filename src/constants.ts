@@ -1,4 +1,4 @@
-export const APP_NAME = "AEN Docs";
+export const APP_NAME = "AEN Document Manager";
 
 export const DOCUMENT_CATEGORIES = [
   "Passport",

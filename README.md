@@ -1,4 +1,4 @@
-# AEN Docs
+# AEN Document Manager
 
 Desktop app for Access Education Network staff to search students on
 aenapply.com, see which application documents are present or missing, and

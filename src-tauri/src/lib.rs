@@ -31,7 +31,10 @@ pub fn run() {
             commands::get_settings,
             commands::save_settings,
             commands::test_login,
+            commands::get_theme_preference,
+            commands::save_theme_preference,
             commands::search_students,
+            commands::get_filter_options,
             commands::get_student_detail,
             commands::download_and_organize,
         ])

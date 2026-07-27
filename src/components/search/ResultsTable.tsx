@@ -1,5 +1,6 @@
 import type { StudentSummary } from "../../types";
 import { useAppContext } from "../../context/AppContext";
+import { StatusPill } from "../layout/StatusPill";
 
 interface ResultsTableProps {
   students: StudentSummary[];
@@ -19,31 +20,31 @@ export function ResultsTable({ students }: ResultsTableProps) {
   const { goToDetail } = useAppContext();
 
   if (students.length === 0) {
-    return <p className="mt-6 text-sm text-slate-500">No students found.</p>;
+    return <p className="mt-6 text-sm text-muted">No students found.</p>;
   }
 
   return (
-    <div className="mt-6 overflow-x-auto rounded-md border border-slate-200 dark:border-slate-800">
-      <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
-        <thead className="bg-slate-100 dark:bg-slate-800">
+    <div className="mt-6 overflow-x-auto rounded-xl border border-border">
+      <table className="min-w-full divide-y divide-border text-sm">
+        <thead className="bg-surface">
           <tr>
             {columns.map((col) => (
-              <th key={col.key} className="px-4 py-2 text-left font-medium">
+              <th key={col.key} className="px-4 py-2 text-left font-medium text-muted">
                 {col.label}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+        <tbody className="divide-y divide-border">
           {students.map((student) => (
             <tr
               key={student.id}
               onClick={() => goToDetail(student)}
-              className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50"
+              className="cursor-pointer hover:bg-white/5"
             >
               {columns.map((col) => (
                 <td key={col.key} className="px-4 py-2">
-                  {student[col.key]}
+                  {col.key === "status" ? <StatusPill status={student.status} /> : student[col.key]}
                 </td>
               ))}
             </tr>

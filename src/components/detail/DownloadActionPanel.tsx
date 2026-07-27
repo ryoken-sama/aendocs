@@ -32,14 +32,14 @@ export function DownloadActionPanel({ student, categoryOverrides }: DownloadActi
         type="button"
         onClick={handleClick}
         disabled={running}
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-ink hover:bg-accent/90 disabled:opacity-50"
       >
         {running ? "Downloading…" : "Download & Organise"}
       </button>
 
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
       {summary && (
-        <p className="mt-2 text-sm text-green-600">
+        <p className="mt-2 text-sm text-success">
           {summary.files_written} file(s) saved to {summary.output_path}
         </p>
       )}

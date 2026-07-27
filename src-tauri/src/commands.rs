@@ -1,10 +1,10 @@
 use crate::app_state::AppState;
 use crate::auth::{self, LoginResult};
-use crate::config::{self, Settings, SettingsInput};
+use crate::config::{self, Settings, SettingsInput, ThemePreference};
 use crate::download::{self, DownloadSummary};
 use crate::errors::AppError;
 use crate::keyring_store;
-use crate::students::{self, StudentDetail, StudentSearchResult, StudentSummary};
+use crate::students::{self, FilterOptions, SearchFilters, StudentDetail, StudentSearchResult, StudentSummary};
 use std::collections::HashMap;
 use tauri::{AppHandle, State};
 
@@ -27,14 +27,42 @@ pub async fn test_login(app: AppHandle, state: State<'_, AppState>) -> Result<Lo
 }
 
 #[tauri::command]
+pub async fn get_theme_preference(app: AppHandle) -> Result<ThemePreference, AppError> {
+    config::load_theme_preference(&app)
+}
+
+#[tauri::command]
+pub async fn save_theme_preference(app: AppHandle, preference: ThemePreference) -> Result<(), AppError> {
+    config::save_theme_preference(&app, &preference)
+}
+
+#[tauri::command]
 pub async fn search_students(
     app: AppHandle,
     state: State<'_, AppState>,
     query: String,
     start: u32,
     length: u32,
+    branch_id: String,
+    agent_id: String,
+    country_id: String,
+    institution_id: String,
 ) -> Result<StudentSearchResult, AppError> {
-    students::search_students(&app, &state, &query, start, length).await
+    let filters = SearchFilters {
+        branch_id: &branch_id,
+        agent_id: &agent_id,
+        country_id: &country_id,
+        institution_id: &institution_id,
+    };
+    students::search_students(&app, &state, &query, start, length, &filters).await
+}
+
+#[tauri::command]
+pub async fn get_filter_options(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<FilterOptions, AppError> {
+    students::get_filter_options(&app, &state).await
 }
 
 #[tauri::command]

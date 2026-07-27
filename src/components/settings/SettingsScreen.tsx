@@ -2,11 +2,14 @@ import { useState } from "react";
 import { useSettings } from "../../hooks/useSettings";
 import { FolderPicker } from "./FolderPicker";
 import { TestLoginButton } from "./TestLoginButton";
+import { ThemeToggle } from "./ThemeToggle";
 import { BackButton } from "../layout/BackButton";
+import { useThemeContext } from "../../context/ThemeContext";
 
 export function SettingsScreen() {
   const { email, setEmail, outputFolder, setOutputFolder, loading, saving, error, save } =
     useSettings();
+  const { darkMode, setDarkMode } = useThemeContext();
   const [password, setPassword] = useState("");
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
 
@@ -26,7 +29,7 @@ export function SettingsScreen() {
     return (
       <div className="mx-auto max-w-xl p-6">
         <BackButton />
-        <p className="mt-4 text-sm text-slate-500">Loading settings…</p>
+        <p className="mt-4 text-sm text-muted">Loading settings…</p>
       </div>
     );
   }
@@ -42,7 +45,7 @@ export function SettingsScreen() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+            className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-primary"
             placeholder="you@aen.edu"
             required
           />
@@ -54,11 +57,11 @@ export function SettingsScreen() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+            className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-primary"
             placeholder="Leave blank to keep the saved password"
             autoComplete="new-password"
           />
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-muted">
             Stored securely in Windows Credential Manager — never written to disk.
           </span>
         </label>
@@ -68,21 +71,26 @@ export function SettingsScreen() {
           <FolderPicker value={outputFolder} onChange={setOutputFolder} />
         </label>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {savedMessage && <p className="text-sm text-green-600">{savedMessage}</p>}
+        {error && <p className="text-sm text-red-400">{error}</p>}
+        {savedMessage && <p className="text-sm text-success">{savedMessage}</p>}
 
         <div className="flex items-center gap-3">
           <button
             type="submit"
             disabled={saving}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-ink hover:bg-primary-dark disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save Settings"}
           </button>
         </div>
       </form>
 
-      <div className="mt-8 border-t border-slate-200 pt-6 dark:border-slate-800">
+      <div className="mt-8 flex items-center justify-between border-t border-border pt-6">
+        <span className="text-sm font-medium">Dark Mode</span>
+        <ThemeToggle checked={darkMode} onChange={setDarkMode} />
+      </div>
+
+      <div className="mt-6 border-t border-border pt-6">
         <TestLoginButton />
       </div>
     </div>

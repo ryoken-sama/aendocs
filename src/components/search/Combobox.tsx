@@ -1,17 +1,25 @@
 import { useEffect, useRef, useState } from "react";
 
+export interface ComboOption {
+  value: string;
+  label: string;
+}
+
 interface ComboboxProps {
   label: string;
-  options: string[];
+  options: ComboOption[];
   value: string;
   onChange: (value: string) => void;
 }
 
-/** A compact type-to-filter combobox: typing narrows the option list, and
- * picking an option (click or Enter) applies that as the active filter. The
- * label doubles as the placeholder to keep this a single-line control. */
+/** A compact type-to-filter combobox: typing narrows the option list by
+ * label, and picking an option (click or Enter) commits its `value` as the
+ * active filter — the displayed text and the value sent to the caller can
+ * differ (e.g. showing "Access Pokhara" while filtering by its numeric ID).
+ * The label doubles as the placeholder to keep this a single-line control. */
 export function Combobox({ label, options, value, onChange }: ComboboxProps) {
-  const [inputValue, setInputValue] = useState(value);
+  const selectedOption = options.find((o) => o.value === value);
+  const [inputValue, setInputValue] = useState(selectedOption?.label ?? "");
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   // Set right before selectOption calls .blur() on itself, so handleBlur
@@ -21,16 +29,17 @@ export function Combobox({ label, options, value, onChange }: ComboboxProps) {
   const justSelectedRef = useRef(false);
 
   useEffect(() => {
-    setInputValue(value);
+    setInputValue(selectedOption?.label ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
   const filteredOptions = options.filter((option) =>
-    option.toLowerCase().includes(inputValue.toLowerCase()),
+    option.label.toLowerCase().includes(inputValue.toLowerCase()),
   );
 
-  function selectOption(option: string) {
-    onChange(option);
-    setInputValue(option);
+  function selectOption(option: ComboOption) {
+    onChange(option.value);
+    setInputValue(option.label);
     setIsOpen(false);
     // The dropdown's onMouseDown prevents the default focus-shift (so the
     // click reaches onClick instead of blurring the input first), so the
@@ -57,7 +66,7 @@ export function Combobox({ label, options, value, onChange }: ComboboxProps) {
     // Option clicks use onMouseDown+preventDefault below so a selection
     // always registers before this fires.
     setIsOpen(false);
-    setInputValue(value);
+    setInputValue(selectedOption?.label ?? "");
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -68,7 +77,7 @@ export function Combobox({ label, options, value, onChange }: ComboboxProps) {
       }
     } else if (e.key === "Escape") {
       setIsOpen(false);
-      setInputValue(value);
+      setInputValue(selectedOption?.label ?? "");
     }
   }
 
@@ -95,7 +104,9 @@ export function Combobox({ label, options, value, onChange }: ComboboxProps) {
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           placeholder={label}
-          className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 pr-7 text-sm dark:border-slate-700 dark:bg-slate-800"
+          className={`w-full rounded-lg border bg-surface px-2 py-1.5 pr-7 text-sm text-ink placeholder:text-muted focus:outline-none ${
+            value ? "border-primary" : "border-border"
+          }`}
         />
         {value && (
           <button
@@ -103,22 +114,22 @@ export function Combobox({ label, options, value, onChange }: ComboboxProps) {
             onMouseDown={(e) => e.preventDefault()}
             onClick={handleClear}
             aria-label={`Clear ${label} filter`}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted hover:text-ink"
           >
             ×
           </button>
         )}
       </div>
       {isOpen && filteredOptions.length > 0 && (
-        <ul className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-slate-200 bg-white text-sm shadow-lg dark:border-slate-700 dark:bg-slate-800">
+        <ul className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-border bg-surface text-sm">
           {filteredOptions.map((option) => (
             <li
-              key={option}
+              key={option.value}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => selectOption(option)}
-              className="cursor-pointer px-2 py-1.5 hover:bg-blue-50 dark:hover:bg-slate-700"
+              className="cursor-pointer px-2 py-1.5 text-ink hover:bg-primary/10"
             >
-              {option}
+              {option.label}
             </li>
           ))}
         </ul>

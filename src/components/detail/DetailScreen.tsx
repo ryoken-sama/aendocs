@@ -56,9 +56,9 @@ export function DetailScreen({ student }: { student: StudentSummary }) {
         <StudentInfoCard student={student} />
 
         <div>
-          <h3 className="mb-2 text-sm font-medium text-slate-500">Documents</h3>
-          {loading && <p className="text-sm text-slate-500">Loading…</p>}
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          <h3 className="mb-2 text-sm font-medium text-muted">Documents</h3>
+          {loading && <p className="text-sm text-muted">Loading…</p>}
+          {error && <p className="text-sm text-red-400">{error}</p>}
           {!loading && !error && (
             <DocumentList
               documents={documents}
@@ -69,7 +69,7 @@ export function DetailScreen({ student }: { student: StudentSummary }) {
         </div>
 
         <div>
-          <h3 className="mb-2 text-sm font-medium text-slate-500">Download &amp; Organise</h3>
+          <h3 className="mb-2 text-sm font-medium text-muted">Download &amp; Organise</h3>
           <DownloadActionPanel student={student} categoryOverrides={categories} />
         </div>
       </div>

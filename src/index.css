@@ -2,10 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Dark mode is the default (no data-theme attribute yet, or explicitly
+   "dark") — matches the app's "Dark Mode on by default" setting. Navbar
+   background/border intentionally reuse --color-surface/--color-border
+   directly, since the spec's navbar values are identical to the generic
+   surface/border values in both themes. */
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
+  --color-background: #111117;
+  --color-surface: #1c1c23;
+  --color-border: #2e2e38;
+  --color-ink: #f3f3f5;
+  --color-muted: #9ca3af;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-background: #fff8f5;
+  --color-surface: #ffffff;
+  --color-border: #ede8e6;
+  --color-ink: #111117;
+  --color-muted: #6b7280;
+}
+
+*,
+*::before,
+*::after {
+  transition:
+    background-color 200ms ease,
+    color 200ms ease;
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100;
+  @apply bg-background text-ink;
+  font-family:
+    "Poppins",
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
 }

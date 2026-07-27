@@ -1,4 +1,6 @@
 import { AppProvider, useAppContext } from "./context/AppContext";
+import { ThemeProvider } from "./context/ThemeContext";
+import { StudentsProvider } from "./context/StudentsContext";
 import { NavBar } from "./components/layout/NavBar";
 import { SettingsScreen } from "./components/settings/SettingsScreen";
 import { SearchScreen } from "./components/search/SearchScreen";
@@ -23,15 +25,19 @@ function App() {
   const { update, dismiss } = useUpdateCheck();
 
   return (
-    <AppProvider>
-      <div className="flex min-h-screen flex-col">
-        {update && <UpdateModal update={update} onDismiss={dismiss} />}
-        <NavBar />
-        <main className="flex-1">
-          <Screens />
-        </main>
-      </div>
-    </AppProvider>
+    <ThemeProvider>
+      <AppProvider>
+        <StudentsProvider>
+          <div className="flex min-h-screen flex-col">
+            {update && <UpdateModal update={update} onDismiss={dismiss} />}
+            <NavBar />
+            <main className="flex-1">
+              <Screens />
+            </main>
+          </div>
+        </StudentsProvider>
+      </AppProvider>
+    </ThemeProvider>
   );
 }
 

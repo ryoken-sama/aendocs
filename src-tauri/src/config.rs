@@ -5,6 +5,7 @@ use tauri::path::BaseDirectory;
 use tauri::{AppHandle, Manager};
 
 const SETTINGS_FILE: &str = "settings.json";
+const THEME_FILE: &str = "theme.json";
 const UNIVERSITY_REQUIREMENTS_FILE: &str = "university_requirements.json";
 const UNIVERSITY_REQUIREMENTS_RESOURCE: &str = "resources/university_requirements.default.json";
 
@@ -21,6 +22,17 @@ pub struct SettingsInput {
     pub password: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThemePreference {
+    pub dark_mode: bool,
+}
+
+impl Default for ThemePreference {
+    fn default() -> Self {
+        Self { dark_mode: true }
+    }
+}
+
 fn app_data_dir(app: &AppHandle) -> Result<PathBuf, AppError> {
     let dir = app.path().app_data_dir()?;
     std::fs::create_dir_all(&dir)?;
@@ -33,6 +45,10 @@ fn settings_path(app: &AppHandle) -> Result<PathBuf, AppError> {
 
 pub fn university_requirements_path(app: &AppHandle) -> Result<PathBuf, AppError> {
     Ok(app_data_dir(app)?.join(UNIVERSITY_REQUIREMENTS_FILE))
+}
+
+fn theme_path(app: &AppHandle) -> Result<PathBuf, AppError> {
+    Ok(app_data_dir(app)?.join(THEME_FILE))
 }
 
 pub fn load_settings(app: &AppHandle) -> Result<Settings, AppError> {
@@ -51,6 +67,24 @@ pub fn save_settings(app: &AppHandle, input: &SettingsInput) -> Result<(), AppEr
     };
     let path = settings_path(app)?;
     let raw = serde_json::to_string_pretty(&settings)?;
+    std::fs::write(path, raw)?;
+    Ok(())
+}
+
+/// Loads the persisted light/dark theme preference, defaulting to dark mode
+/// (per the app's default) if no preference has been saved yet.
+pub fn load_theme_preference(app: &AppHandle) -> Result<ThemePreference, AppError> {
+    let path = theme_path(app)?;
+    if !path.exists() {
+        return Ok(ThemePreference::default());
+    }
+    let raw = std::fs::read_to_string(path)?;
+    Ok(serde_json::from_str(&raw)?)
+}
+
+pub fn save_theme_preference(app: &AppHandle, preference: &ThemePreference) -> Result<(), AppError> {
+    let path = theme_path(app)?;
+    let raw = serde_json::to_string_pretty(preference)?;
     std::fs::write(path, raw)?;
     Ok(())
 }

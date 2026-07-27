@@ -10,7 +10,7 @@ export function BackButton() {
     <button
       type="button"
       onClick={goToSearch}
-      className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-base font-semibold text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-950/50"
+      className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-base font-semibold text-primary hover:bg-primary/10"
     >
       <span aria-hidden="true" className="text-lg leading-none">
         ←

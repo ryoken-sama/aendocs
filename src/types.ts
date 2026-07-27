@@ -14,6 +14,10 @@ export interface LoginResult {
   message: string;
 }
 
+export interface ThemePreference {
+  dark_mode: boolean;
+}
+
 export interface StudentSummary {
   id: string;
   students_id: string;
@@ -30,6 +34,27 @@ export interface StudentSearchResult {
   records_total: number;
   records_filtered: number;
   students: StudentSummary[];
+}
+
+export interface FilterOption {
+  id: string;
+  name: string;
+}
+
+export interface FilterOptions {
+  branch: FilterOption[];
+  agent: FilterOption[];
+  country: FilterOption[];
+  institution: FilterOption[];
+}
+
+/** IDs (not display names) sent to the server as DataTables queryStrings
+ * filters. Empty string means "no filter" for that field. */
+export interface ServerFilters {
+  branchId: string;
+  agentId: string;
+  countryId: string;
+  institutionId: string;
 }
 
 export interface DetailDocEntry {
