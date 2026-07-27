@@ -54,3 +54,37 @@ npm run tauri build
 ```
 
 The installer will be under `src-tauri/target/release/bundle/nsis/`.
+
+## Auto-updater
+
+The app checks `https://github.com/ryoken-sama/aendocs/releases/latest/download/latest.json`
+on launch (silently — a failed check never interrupts the app) and, if a
+newer version is available, shows a modal — "Update available — install
+now?" — with "Install" / "Later". "Later" doesn't ask again until the app is
+next launched.
+
+This requires every release to be signed with the same keypair the app's
+`tauri.conf.json` public key was generated from:
+
+- The **public key** is already in `src-tauri/tauri.conf.json` under
+  `plugins.updater.pubkey`.
+- The **private key** must be added as a GitHub Actions repo secret named
+  `TAURI_SIGNING_PRIVATE_KEY` (the full contents of the private key file). If
+  the key was generated with a password, also add
+  `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
+
+With that secret in place, `tauri-apps/tauri-action` (used by
+`.github/workflows/build-windows.yml`) automatically signs the installer and
+attaches `latest.json` to the GitHub release — no manual signing step needed.
+
+To generate a new keypair (e.g. if the original is lost — note this
+invalidates updates for everyone on an older version until they manually
+reinstall, since old clients only trust the old public key):
+
+```
+cargo tauri signer generate --ci -w /path/outside/the/repo/aen-docs-updater.key
+```
+
+Never commit the private key file; `.gitignore` excludes `*.key`/`*.key.pub`
+as a safety net, but treat the key itself (and anywhere it's been pasted,
+including chat/CI logs) as sensitive.

@@ -24,6 +24,7 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
     "windows": {
       "nsis": {
         "installMode": "currentUser"
@@ -37,5 +38,11 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQyRDkyNEFEOTQ1REZBNEIKUldSTCtsMlVyU1RaUWdmQ2NmUE1OTXlud1RLaVRxQ1BKZU1LV1lMUWIyQjNVeUdlcnZNTGJQaXUK",
+      "endpoints": ["https://github.com/ryoken-sama/aendocs/releases/latest/download/latest.json"]
+    }
   }
 }

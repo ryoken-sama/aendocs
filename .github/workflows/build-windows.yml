@@ -24,8 +24,24 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Required for the auto-updater: signs the NSIS installer and,
+          # because tauri.conf.json sets bundle.createUpdaterArtifacts,
+          # tauri-action generates the .sig files and a latest.json update
+          # manifest and attaches them to the release automatically — no
+          # separate signing/upload step needed. Add TAURI_SIGNING_PRIVATE_KEY
+          # (the full contents of the private key file) as a repo secret; add
+          # TAURI_SIGNING_PRIVATE_KEY_PASSWORD too if the key was generated
+          # with a password.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "AEN Docs ${{ github.ref_name }}"
           releaseDraft: true
           prerelease: false
+          includeUpdaterJson: true
+          # We only ever build the nsis target (see tauri.conf.json
+          # bundle.targets), so make that explicit rather than leaving
+          # tauri-action to infer which Windows artifact latest.json should
+          # point at.
+          updaterJsonPreferNsis: true

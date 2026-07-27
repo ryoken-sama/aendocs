@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Tauri updater signing keys must never be committed — the private key
+# lives only in the TAURI_SIGNING_PRIVATE_KEY GitHub secret.
+*.key
+*.key.pub
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
