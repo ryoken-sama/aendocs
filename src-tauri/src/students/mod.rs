@@ -10,7 +10,7 @@ use crate::errors::AppError;
 use serde_json::Value;
 use tauri::AppHandle;
 
-const STUDENTS_URL: &str = "https://aenapply.com/students";
+const STUDENTS_URL: &str = "https://aenapply.com/offerapplications";
 const STUDENT_DETAIL_URL_BASE: &str = "https://aenapply.com/offerapplications/show";
 
 pub async fn search_students(
@@ -50,5 +50,5 @@ pub async fn get_student_detail(
 
     let url = format!("{STUDENT_DETAIL_URL_BASE}/{student_id}");
     let html = state.http_client.get(&url).send().await?.text().await?;
-    detail_parser::parse_student_detail_html(&html, student_id)
+    detail_parser::parse_student_detail_html(&html)
 }

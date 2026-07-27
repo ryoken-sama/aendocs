@@ -1,6 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
-  DocRequirementStatus,
   DownloadSummary,
   LoginResult,
   Settings,
@@ -34,13 +33,9 @@ export function getStudentDetail(studentId: string): Promise<StudentDetail> {
   return invoke("get_student_detail", { studentId });
 }
 
-export function getChecklist(
-  university: string,
-  presentCategories: string[],
-): Promise<DocRequirementStatus[]> {
-  return invoke("get_checklist", { university, presentCategories });
-}
-
-export function downloadAndOrganize(student: StudentSummary): Promise<DownloadSummary> {
-  return invoke("download_and_organize", { student });
+export function downloadAndOrganize(
+  student: StudentSummary,
+  categoryOverrides: Record<string, string>,
+): Promise<DownloadSummary> {
+  return invoke("download_and_organize", { student, categoryOverrides });
 }

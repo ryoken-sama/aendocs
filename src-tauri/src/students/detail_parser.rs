@@ -5,101 +5,62 @@ use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct DetailDocEntry {
-    /// A canonical document category (e.g. "Passport"), classified from
-    /// whatever raw label text appears on the detail page — never a raw
-    /// filename. Unrecognized labels are dropped rather than surfaced, since
-    /// the ZIP contents after download remain the authoritative source.
-    pub label: String,
-    pub present: bool,
+    /// The document's label from the gallery link's `data-caption` attribute
+    /// (e.g. "LOR") — aenapply.com's fancybox gallery uses this as a human
+    /// label, not the underlying stored filename.
+    pub name: String,
+    /// The document's storage URL (`href` on the same `<a>` tag).
+    pub url: String,
+    /// The last path segment of `url` (e.g. "prabin_dhakal_lor_3.pdf") — this
+    /// is the actual filename the ZIP archive uses, and is the key the
+    /// staff's rename-dropdown selection is matched against during download
+    /// (the display `name` above never appears in the ZIP).
+    pub filename: String,
+    /// A best-effort keyword-matched category to pre-select in the rename
+    /// dropdown; `None` if nothing matched (UI defaults to "Manually Rename").
+    pub suggested_category: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct StudentDetail {
-    pub id: String,
-    pub name: String,
-    pub branch: String,
-    pub country: String,
-    pub university: String,
-    pub program: String,
     pub documents: Vec<DetailDocEntry>,
 }
 
-// Named, swappable CSS selector constants — first guesses (plan §6b). Update
-// these once the real detail-page HTML has been captured from a live login.
-const SELECTOR_STUDENT_NAME: &str = "h1.student-name, .page-title";
-const SELECTOR_BRANCH: &str = "[data-field='branch'], .branch-name";
-const SELECTOR_COUNTRY: &str = "[data-field='country'], .country-name";
-const SELECTOR_UNIVERSITY: &str = "[data-field='university'], .university-name";
-const SELECTOR_PROGRAM: &str = "[data-field='program'], .program-name";
-const SELECTOR_DOC_ROWS: &str = "table.documents tr, .document-list .document-item";
-const SELECTOR_DOC_LABEL: &str = "td:first-child, .document-name";
-const SELECTOR_DOC_PRESENT_HINT: &str = "a.download-link, .document-status.present";
+/// Matches the fancybox gallery links inside the `#documents` tab, e.g.
+/// `<div class="document-list"><div class="hstack"><div class="d-flex">
+///   <a data-fancybox="gallery" data-caption="LOR" href="https://aenapply.com/storage/.../lor_3.pdf">...</a>
+/// </div></div></div>`.
+const SELECTOR_DOCUMENT_LINK: &str =
+    "div.document-list > div.hstack > div.d-flex a[data-fancybox='gallery']";
 
-fn select_text(document: &Html, selector_str: &str) -> String {
-    Selector::parse(selector_str)
-        .ok()
-        .and_then(|sel| document.select(&sel).next())
-        .map(|el| el.text().collect::<String>().trim().to_string())
-        .unwrap_or_default()
-}
+/// Parses the `#documents` tab section of the student detail page HTML.
+/// Student profile info (name, branch, country, university, program) is
+/// intentionally not scraped here — it isn't present on this page and is
+/// passed through from the search results' `StudentSummary` instead.
+pub fn parse_student_detail_html(html: &str) -> Result<StudentDetail, AppError> {
+    let document = Html::parse_fragment(html);
 
-/// Parses the student detail page HTML. Selectors that match nothing yield
-/// empty strings / an empty document list rather than an error — a wrong or
-/// stale selector degrades gracefully instead of breaking the detail screen
-/// (see plan §6b).
-pub fn parse_student_detail_html(html: &str, student_id: &str) -> Result<StudentDetail, AppError> {
-    let document = Html::parse_document(html);
-
-    let name = select_text(&document, SELECTOR_STUDENT_NAME);
-    let branch = select_text(&document, SELECTOR_BRANCH);
-    let country = select_text(&document, SELECTOR_COUNTRY);
-    let university = select_text(&document, SELECTOR_UNIVERSITY);
-    let program = select_text(&document, SELECTOR_PROGRAM);
-
-    let mut documents: Vec<DetailDocEntry> = Vec::new();
-    if let Ok(row_selector) = Selector::parse(SELECTOR_DOC_ROWS) {
-        let label_selector = Selector::parse(SELECTOR_DOC_LABEL).ok();
-        let present_selector = Selector::parse(SELECTOR_DOC_PRESENT_HINT).ok();
-
-        for row in document.select(&row_selector) {
-            let raw_label = label_selector
-                .as_ref()
-                .and_then(|sel| row.select(sel).next())
-                .map(|el| el.text().collect::<String>().trim().to_string())
-                .unwrap_or_default();
-            if raw_label.is_empty() {
+    let mut documents = Vec::new();
+    if let Ok(selector) = Selector::parse(SELECTOR_DOCUMENT_LINK) {
+        for link in document.select(&selector) {
+            let name = link.value().attr("data-caption").unwrap_or_default().trim().to_string();
+            let url = link.value().attr("href").unwrap_or_default().to_string();
+            if name.is_empty() {
                 continue;
             }
 
-            let present = present_selector
-                .as_ref()
-                .map(|sel| row.select(sel).next().is_some())
-                .unwrap_or(false);
-
-            let Some(category) = rename_rules::classify(&raw_label) else {
-                continue;
-            };
-
-            if let Some(existing) = documents.iter_mut().find(|d| d.label == category) {
-                existing.present = existing.present || present;
-            } else {
-                documents.push(DetailDocEntry {
-                    label: category.to_string(),
-                    present,
-                });
-            }
+            let filename = url.rsplit('/').next().unwrap_or_default().to_string();
+            let suggested_category = rename_rules::classify(&name).map(|c| c.to_string());
+            documents.push(DetailDocEntry {
+                name,
+                url,
+                filename,
+                suggested_category,
+            });
         }
     }
 
-    Ok(StudentDetail {
-        id: student_id.to_string(),
-        name,
-        branch,
-        country,
-        university,
-        program,
-        documents,
-    })
+    Ok(StudentDetail { documents })
 }
 
 #[cfg(test)]
@@ -107,66 +68,75 @@ mod tests {
     use super::*;
 
     const FIXTURE_HTML: &str = r#"
-        <html>
-          <body>
-            <h1 class="student-name">Jane Doe</h1>
-            <span data-field="branch">Access Kathmandu</span>
-            <span data-field="country">Nepal</span>
-            <span data-field="university">University of Melbourne</span>
-            <span data-field="program">Master of IT</span>
-            <table class="documents">
-              <tr><td>Passport Scan.pdf</td><td><a class="download-link" href="/download/1">View</a></td></tr>
-              <tr><td>IELTS Certificate.pdf</td><td></td></tr>
-              <tr><td>Random Unrelated File.pdf</td><td></td></tr>
-            </table>
-          </body>
-        </html>
+        <div id="documents">
+          <div class="document-list">
+            <div class="hstack">
+              <div class="d-flex">
+                <a data-fancybox="gallery" data-caption="Passport" href="https://aenapply.com/storage/docs/passport_1.pdf">
+                  <img src="thumb1.png">
+                </a>
+              </div>
+            </div>
+            <div class="hstack">
+              <div class="d-flex">
+                <a data-fancybox="gallery" data-caption="LOR" href="https://aenapply.com/storage/docs/lor_3.pdf">
+                  <img src="thumb2.png">
+                </a>
+              </div>
+            </div>
+            <div class="hstack">
+              <div class="d-flex">
+                <a data-fancybox="gallery" data-caption="Random Unrelated File" href="https://aenapply.com/storage/docs/misc_1.pdf">
+                  <img src="thumb3.png">
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
     "#;
 
     #[test]
-    fn parses_fields_and_classifies_documents() {
-        let detail = parse_student_detail_html(FIXTURE_HTML, "42").unwrap();
-        assert_eq!(detail.id, "42");
-        assert_eq!(detail.name, "Jane Doe");
-        assert_eq!(detail.branch, "Access Kathmandu");
-        assert_eq!(detail.country, "Nepal");
-        assert_eq!(detail.university, "University of Melbourne");
-        assert_eq!(detail.program, "Master of IT");
+    fn parses_document_links_with_caption_and_url() {
+        let detail = parse_student_detail_html(FIXTURE_HTML).unwrap();
+        assert_eq!(detail.documents.len(), 3);
 
-        let passport = detail.documents.iter().find(|d| d.label == "Passport").unwrap();
-        assert!(passport.present);
+        let passport = &detail.documents[0];
+        assert_eq!(passport.name, "Passport");
+        assert_eq!(passport.url, "https://aenapply.com/storage/docs/passport_1.pdf");
+        assert_eq!(passport.filename, "passport_1.pdf");
+        assert_eq!(passport.suggested_category.as_deref(), Some("Passport"));
 
-        let english = detail
-            .documents
-            .iter()
-            .find(|d| d.label == "English Score")
-            .unwrap();
-        assert!(!english.present);
+        let lor = &detail.documents[1];
+        assert_eq!(lor.name, "LOR");
+        assert_eq!(lor.filename, "lor_3.pdf");
+        assert_eq!(lor.suggested_category.as_deref(), Some("LOR"));
 
-        // "Random Unrelated File.pdf" matches no keyword and is dropped, not surfaced.
-        assert_eq!(detail.documents.len(), 2);
+        // Unrecognized names are still listed (raw), just with no suggestion.
+        let unrelated = &detail.documents[2];
+        assert_eq!(unrelated.name, "Random Unrelated File");
+        assert_eq!(unrelated.suggested_category, None);
     }
 
     #[test]
-    fn degrades_gracefully_when_selectors_match_nothing() {
-        let detail = parse_student_detail_html("<html><body>Nothing here.</body></html>", "7").unwrap();
-        assert_eq!(detail.id, "7");
-        assert_eq!(detail.name, "");
-        assert!(detail.documents.is_empty());
-    }
-
-    #[test]
-    fn dedupes_multiple_rows_matching_same_category() {
+    fn filename_is_derived_from_url_not_display_name() {
+        // Real-world case: the display name bears no resemblance to the
+        // actual stored filename, so the two must never be conflated.
         let html = r#"
-            <table class="documents">
-              <tr><td>Transcript Part 1.pdf</td><td></td></tr>
-              <tr><td>Transcript Part 2.pdf</td><td><a class="download-link">View</a></td></tr>
-            </table>
+            <div class="document-list"><div class="hstack"><div class="d-flex">
+              <a data-fancybox="gallery" data-caption="Visa Copy"
+                 href="https://aenapply.com/storage/access/uploads/offerapplications/prabin_dhakal_prabin_visa_485.pdf">
+              </a>
+            </div></div></div>
         "#;
-        let detail = parse_student_detail_html(html, "1").unwrap();
+        let detail = parse_student_detail_html(html).unwrap();
         assert_eq!(detail.documents.len(), 1);
-        assert_eq!(detail.documents[0].label, "Academic Transcripts");
-        // present becomes true because at least one matching row indicated present.
-        assert!(detail.documents[0].present);
+        assert_eq!(detail.documents[0].name, "Visa Copy");
+        assert_eq!(detail.documents[0].filename, "prabin_dhakal_prabin_visa_485.pdf");
+    }
+
+    #[test]
+    fn degrades_gracefully_when_selector_matches_nothing() {
+        let detail = parse_student_detail_html("<div>Nothing here.</div>").unwrap();
+        assert!(detail.documents.is_empty());
     }
 }

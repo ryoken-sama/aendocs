@@ -13,7 +13,7 @@ function Screens() {
     case "search":
       return <SearchScreen />;
     case "detail":
-      return <DetailScreen studentId={screen.studentId} />;
+      return <DetailScreen student={screen.student} />;
   }
 }
 

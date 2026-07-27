@@ -1,11 +1,11 @@
 use crate::app_state::AppState;
 use crate::auth::{self, LoginResult};
-use crate::checklist::{self, DocRequirementStatus};
 use crate::config::{self, Settings, SettingsInput};
 use crate::download::{self, DownloadSummary};
 use crate::errors::AppError;
 use crate::keyring_store;
 use crate::students::{self, StudentDetail, StudentSearchResult, StudentSummary};
+use std::collections::HashMap;
 use tauri::{AppHandle, State};
 
 #[tauri::command]
@@ -47,21 +47,11 @@ pub async fn get_student_detail(
 }
 
 #[tauri::command]
-pub async fn get_checklist(
-    app: AppHandle,
-    university: String,
-    present_categories: Vec<String>,
-) -> Result<Vec<DocRequirementStatus>, AppError> {
-    let path = config::university_requirements_path(&app)?;
-    let requirements = checklist::load_requirements(&path)?;
-    Ok(checklist::compute_status(&university, &present_categories, &requirements))
-}
-
-#[tauri::command]
 pub async fn download_and_organize(
     app: AppHandle,
     state: State<'_, AppState>,
     student: StudentSummary,
+    category_overrides: HashMap<String, String>,
 ) -> Result<DownloadSummary, AppError> {
-    download::download_and_organize(&app, &state, &student).await
+    download::download_and_organize(&app, &state, &student, &category_overrides).await
 }

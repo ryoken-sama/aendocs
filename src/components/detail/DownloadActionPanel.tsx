@@ -1,16 +1,13 @@
 import { useState } from "react";
 import { downloadAndOrganize } from "../../lib/tauri";
-import { useProgressLog } from "../../hooks/useProgressLog";
-import { LogPanel } from "../layout/LogPanel";
-import type { DownloadSummary, StudentDetail } from "../../types";
+import type { DownloadSummary, StudentSummary } from "../../types";
 
 interface DownloadActionPanelProps {
-  detail: StudentDetail;
-  onDownloadComplete: (summary: DownloadSummary) => void;
+  student: StudentSummary;
+  categoryOverrides: Record<string, string>;
 }
 
-export function DownloadActionPanel({ detail, onDownloadComplete }: DownloadActionPanelProps) {
-  const { lines, setLines } = useProgressLog(detail.id);
+export function DownloadActionPanel({ student, categoryOverrides }: DownloadActionPanelProps) {
   const [running, setRunning] = useState(false);
   const [summary, setSummary] = useState<DownloadSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -19,18 +16,9 @@ export function DownloadActionPanel({ detail, onDownloadComplete }: DownloadActi
     setRunning(true);
     setError(null);
     setSummary(null);
-    setLines([]);
     try {
-      const result = await downloadAndOrganize({
-        id: detail.id,
-        name: detail.name,
-        branch: detail.branch,
-        country: detail.country,
-        university: detail.university,
-        program: detail.program,
-      });
+      const result = await downloadAndOrganize(student, categoryOverrides);
       setSummary(result);
-      onDownloadComplete(result);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -55,8 +43,6 @@ export function DownloadActionPanel({ detail, onDownloadComplete }: DownloadActi
           {summary.files_written} file(s) saved to {summary.output_path}
         </p>
       )}
-
-      <LogPanel lines={lines} />
     </div>
   );
 }

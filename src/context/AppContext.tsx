@@ -1,15 +1,16 @@
 import { createContext, useContext, useState, ReactNode } from "react";
+import type { StudentSummary } from "../types";
 
 export type Screen =
   | { name: "settings" }
   | { name: "search" }
-  | { name: "detail"; studentId: string };
+  | { name: "detail"; student: StudentSummary };
 
 interface AppContextValue {
   screen: Screen;
   goToSettings: () => void;
   goToSearch: () => void;
-  goToDetail: (studentId: string) => void;
+  goToDetail: (student: StudentSummary) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -21,7 +22,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     screen,
     goToSettings: () => setScreen({ name: "settings" }),
     goToSearch: () => setScreen({ name: "search" }),
-    goToDetail: (studentId: string) => setScreen({ name: "detail", studentId }),
+    goToDetail: (student: StudentSummary) => setScreen({ name: "detail", student }),
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

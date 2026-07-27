@@ -76,14 +76,16 @@ pub fn split_extension(filename: &str) -> &str {
 /// collisions (two files landing in the same category) with a numeric suffix:
 /// "Academic Transcripts.pdf", "Academic Transcripts 2.pdf", ... Input order
 /// is preserved (stable ZIP-entry order in the caller), so reruns against an
-/// unchanged ZIP produce identical numbering.
-pub fn resolve_collisions(classified: &[(String, &'static str)]) -> Vec<(String, String)> {
-    let mut counts: HashMap<&'static str, u32> = HashMap::new();
+/// unchanged ZIP produce identical numbering. Categories are owned `String`s
+/// rather than `&'static str` since they may come from a staff member's
+/// manual dropdown choice, not just the built-in `RENAME_RULES` keywords.
+pub fn resolve_collisions(classified: &[(String, String)]) -> Vec<(String, String)> {
+    let mut counts: HashMap<&str, u32> = HashMap::new();
     classified
         .iter()
         .map(|(orig, category)| {
             let ext = split_extension(orig);
-            let n = counts.entry(category).or_insert(0);
+            let n = counts.entry(category.as_str()).or_insert(0);
             *n += 1;
             let final_name = if *n == 1 {
                 format!("{category}.{ext}")
@@ -144,9 +146,9 @@ mod tests {
     #[test]
     fn collisions_are_numbered_in_stable_order() {
         let classified = vec![
-            ("t1.pdf".to_string(), "Academic Transcripts"),
-            ("t2.pdf".to_string(), "Academic Transcripts"),
-            ("t3.pdf".to_string(), "Academic Transcripts"),
+            ("t1.pdf".to_string(), "Academic Transcripts".to_string()),
+            ("t2.pdf".to_string(), "Academic Transcripts".to_string()),
+            ("t3.pdf".to_string(), "Academic Transcripts".to_string()),
         ];
         let resolved = resolve_collisions(&classified);
         assert_eq!(
@@ -162,8 +164,8 @@ mod tests {
     #[test]
     fn no_collision_when_categories_differ() {
         let classified = vec![
-            ("p.pdf".to_string(), "Passport"),
-            ("c.pdf".to_string(), "CV"),
+            ("p.pdf".to_string(), "Passport".to_string()),
+            ("c.pdf".to_string(), "CV".to_string()),
         ];
         let resolved = resolve_collisions(&classified);
         assert_eq!(
@@ -177,7 +179,7 @@ mod tests {
 
     #[test]
     fn preserves_original_extension() {
-        let classified = vec![("scan.jpg".to_string(), "Passport")];
+        let classified = vec![("scan.jpg".to_string(), "Passport".to_string())];
         let resolved = resolve_collisions(&classified);
         assert_eq!(resolved, vec![("scan.jpg".to_string(), "Passport.jpg".to_string())]);
     }

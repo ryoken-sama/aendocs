@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
-import { getChecklist, getStudentDetail } from "../../lib/tauri";
+import { getStudentDetail } from "../../lib/tauri";
 import { useAppContext } from "../../context/AppContext";
-import type { DocRequirementStatus, DownloadSummary, StudentDetail } from "../../types";
+import type { DetailDocEntry, StudentSummary } from "../../types";
 import { StudentInfoCard } from "./StudentInfoCard";
-import { ChecklistGrid } from "./ChecklistGrid";
+import { DocumentList } from "./DocumentList";
 import { DownloadActionPanel } from "./DownloadActionPanel";
 
-export function DetailScreen({ studentId }: { studentId: string }) {
+export function DetailScreen({ student }: { student: StudentSummary }) {
   const { goToSearch } = useAppContext();
-  const [detail, setDetail] = useState<StudentDetail | null>(null);
-  const [checklist, setChecklist] = useState<DocRequirementStatus[]>([]);
+  const [documents, setDocuments] = useState<DetailDocEntry[]>([]);
+  // Keyed by the document's URL-derived filename (the key shared with ZIP
+  // entries at download time) — never by display name, which the ZIP
+  // doesn't carry at all.
+  const [categories, setCategories] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,14 +21,15 @@ export function DetailScreen({ studentId }: { studentId: string }) {
     setLoading(true);
     setError(null);
 
-    getStudentDetail(studentId)
-      .then(async (d) => {
+    getStudentDetail(student.id)
+      .then((d) => {
         if (cancelled) return;
-        setDetail(d);
-        const presentCategories = d.documents.filter((doc) => doc.present).map((doc) => doc.label);
-        const items = await getChecklist(d.university, presentCategories);
-        if (cancelled) return;
-        setChecklist(items);
+        setDocuments(d.documents);
+        setCategories(
+          Object.fromEntries(
+            d.documents.map((doc) => [doc.filename, doc.suggested_category ?? "Manually Rename"]),
+          ),
+        );
       })
       .catch((e) => {
         if (!cancelled) setError(String(e));
@@ -37,22 +41,10 @@ export function DetailScreen({ studentId }: { studentId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [studentId]);
+  }, [student.id]);
 
-  function handleDownloadComplete(summary: DownloadSummary) {
-    // The download pipeline recomputed the checklist against what's actually
-    // on disk now; reflect it here without a full re-fetch. "not_required"
-    // entries are unaffected by a download and are left as-is.
-    setChecklist((prev) =>
-      prev.map((item) =>
-        item.status === "not_required"
-          ? item
-          : {
-              ...item,
-              status: summary.missing_categories.includes(item.category) ? "missing" : "present",
-            },
-      ),
-    );
+  function handleCategoryChange(filename: string, category: string) {
+    setCategories((prev) => ({ ...prev, [filename]: category }));
   }
 
   return (
@@ -63,22 +55,27 @@ export function DetailScreen({ studentId }: { studentId: string }) {
 
       <h2 className="mt-3 text-xl font-semibold">Student Detail</h2>
 
-      {loading && <p className="mt-4 text-sm text-slate-500">Loading…</p>}
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      <div className="mt-4 flex flex-col gap-6">
+        <StudentInfoCard student={student} />
 
-      {!loading && !error && detail && (
-        <div className="mt-4 flex flex-col gap-6">
-          <StudentInfoCard detail={detail} />
-          <div>
-            <h3 className="mb-2 text-sm font-medium text-slate-500">Document Checklist</h3>
-            <ChecklistGrid items={checklist} />
-          </div>
-          <div>
-            <h3 className="mb-2 text-sm font-medium text-slate-500">Download &amp; Organise</h3>
-            <DownloadActionPanel detail={detail} onDownloadComplete={handleDownloadComplete} />
-          </div>
+        <div>
+          <h3 className="mb-2 text-sm font-medium text-slate-500">Documents</h3>
+          {loading && <p className="text-sm text-slate-500">Loading…</p>}
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          {!loading && !error && (
+            <DocumentList
+              documents={documents}
+              categories={categories}
+              onCategoryChange={handleCategoryChange}
+            />
+          )}
         </div>
-      )}
+
+        <div>
+          <h3 className="mb-2 text-sm font-medium text-slate-500">Download &amp; Organise</h3>
+          <DownloadActionPanel student={student} categoryOverrides={categories} />
+        </div>
+      </div>
     </div>
   );
 }

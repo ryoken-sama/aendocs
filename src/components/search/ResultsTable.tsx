@@ -12,6 +12,7 @@ const columns: { key: keyof StudentSummary; label: string }[] = [
   { key: "country", label: "Country" },
   { key: "university", label: "University" },
   { key: "program", label: "Program" },
+  { key: "status", label: "Status" },
 ];
 
 export function ResultsTable({ students }: ResultsTableProps) {
@@ -37,7 +38,7 @@ export function ResultsTable({ students }: ResultsTableProps) {
           {students.map((student) => (
             <tr
               key={student.id}
-              onClick={() => goToDetail(student.id)}
+              onClick={() => goToDetail(student)}
               className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50"
             >
               {columns.map((col) => (

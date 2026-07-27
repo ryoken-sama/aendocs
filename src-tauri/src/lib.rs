@@ -31,7 +31,6 @@ pub fn run() {
             commands::test_login,
             commands::search_students,
             commands::get_student_detail,
-            commands::get_checklist,
             commands::download_and_organize,
         ])
         .run(tauri::generate_context!())
