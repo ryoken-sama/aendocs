@@ -21,6 +21,17 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Set version from tag
+        shell: bash
+        # Strips the leading "v" from a tag like "v0.2.2" and writes it into
+        # tauri.conf.json's version field, so the built installer/package is
+        # named with the actual release version instead of whatever was last
+        # committed there.
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          jq --arg version "$VERSION" '.version = $version' src-tauri/tauri.conf.json > tauri.conf.json.tmp
+          mv tauri.conf.json.tmp src-tauri/tauri.conf.json
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -77,6 +88,13 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
+
+      - name: Set version from tag
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          jq --arg version "$VERSION" '.version = $version' src-tauri/tauri.conf.json > tauri.conf.json.tmp
+          mv tauri.conf.json.tmp src-tauri/tauri.conf.json
 
       - uses: tauri-apps/tauri-action@v0
         env:
