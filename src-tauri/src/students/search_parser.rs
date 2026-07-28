@@ -149,8 +149,13 @@ fn parse_row(row: &Value) -> StudentSummary {
         .get("offerapplication_id")
         .map(value_to_string)
         .unwrap_or_default();
+    // `progress_status_name` is confirmed for /offerapplications; the other
+    // 6 sidebar sections request a `status` column instead (see
+    // Section::columns) and haven't been checked against a live response,
+    // so fall back to whichever key is actually present.
     let status = row
         .get("progress_status_name")
+        .or_else(|| row.get("status"))
         .and_then(Value::as_str)
         .map(extract_status)
         .unwrap_or_default();

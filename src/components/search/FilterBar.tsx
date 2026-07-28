@@ -6,7 +6,6 @@ export interface StudentFilters {
   agentId: string;
   countryId: string;
   institutionId: string;
-  status: string;
 }
 
 interface FilterBarProps {
@@ -15,7 +14,6 @@ interface FilterBarProps {
     agent: FilterOption[];
     country: FilterOption[];
     institution: FilterOption[];
-    status: string[];
   };
   filters: StudentFilters;
   onChange: (field: keyof StudentFilters, value: string) => void;
@@ -23,10 +21,6 @@ interface FilterBarProps {
 
 function toComboOptions(options: FilterOption[]): ComboOption[] {
   return options.map((o) => ({ value: o.id, label: o.name }));
-}
-
-function statusToComboOptions(options: string[]): ComboOption[] {
-  return options.map((s) => ({ value: s, label: s }));
 }
 
 export function FilterBar({ options, filters, onChange }: FilterBarProps) {
@@ -55,12 +49,6 @@ export function FilterBar({ options, filters, onChange }: FilterBarProps) {
         options={toComboOptions(options.institution)}
         value={filters.institutionId}
         onChange={(v) => onChange("institutionId", v)}
-      />
-      <Combobox
-        label="Status"
-        options={statusToComboOptions(options.status)}
-        value={filters.status}
-        onChange={(v) => onChange("status", v)}
       />
     </div>
   );

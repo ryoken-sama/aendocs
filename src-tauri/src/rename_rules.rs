@@ -5,56 +5,98 @@ pub struct RenameRule {
     pub keywords: &'static [&'static str],
 }
 
-/// Fixed priority order — checked top to bottom, first match wins. This
-/// resolves ambiguous filenames deterministically, e.g. "academic_reference.pdf"
-/// matches "Academic Transcripts" (rule 2) before it could match "LOR" (rule 6).
+/// Fixed priority order — checked top to bottom, first match wins. Two
+/// categories ("Qualifications" and "Employment Documents") are targeted by
+/// two separate rules each (kept as distinct entries, not merged, so their
+/// relative position in this priority order matches the spec exactly —
+/// merging their keywords into one earlier entry would change how filenames
+/// that also match an intervening rule get classified).
 pub const RENAME_RULES: &[RenameRule] = &[
     RenameRule {
         category: "Passport",
         keywords: &["passport"],
     },
     RenameRule {
-        category: "Academic Transcripts",
-        keywords: &["academic", "qualification", "transcript"],
+        category: "Qualifications",
+        keywords: &["qualification", "academic", "transcript", "degree", "certificate"],
+    },
+    RenameRule {
+        category: "Updated CV",
+        keywords: &["cv", "resume"],
     },
     RenameRule {
         category: "English Score",
         keywords: &["english", "ielts", "pte", "toefl"],
     },
     RenameRule {
-        category: "SOP",
-        keywords: &["sop", "statement"],
+        category: "Employment Documents",
+        keywords: &["employment", "work", "experience", "job"],
     },
     RenameRule {
-        category: "CV",
-        keywords: &["cv", "resume"],
+        category: "Recommendation Letter",
+        keywords: &["recommendation", "reference", "lor", "referee"],
     },
     RenameRule {
-        category: "LOR",
-        keywords: &["lor", "recommendation", "reference"],
+        category: "Application Form (College / University)",
+        keywords: &["application form", "college form", "university form"],
     },
     RenameRule {
-        category: "Work Experience",
-        keywords: &["work", "employment"],
+        category: "Statement of Purpose (SOP)",
+        keywords: &["sop", "statement of purpose", "statement"],
     },
     RenameRule {
-        category: "Grading Scale",
+        category: "Immigration History",
+        keywords: &["immigration", "history"],
+    },
+    RenameRule {
+        category: "Agent Authorisation Form",
+        keywords: &["authorisation", "authorization", "agent auth"],
+    },
+    RenameRule {
+        category: "Min 2 years Work Experience (For PCL Nursing)",
+        keywords: &["nursing", "pcl"],
+    },
+    RenameRule {
+        category: "Registered Nurse Certificate (Compulsary for Nursing Programmes)",
+        keywords: &["registered nurse"],
+    },
+    RenameRule {
+        category: "Police Clearance Certificate (Mandatory for Nursing Pragrammes)",
+        keywords: &["police clearance"],
+    },
+    RenameRule {
+        category: "Enrolment Form",
+        keywords: &["enrolment", "enrollment"],
+    },
+    RenameRule {
+        category: "Visa",
+        keywords: &["visa"],
+    },
+    RenameRule {
+        category: "Employment Documents",
+        keywords: &["internship"],
+    },
+    RenameRule {
+        category: "Qualifications",
         keywords: &["grading", "grade"],
-    },
-    RenameRule {
-        category: "Agent Authorization Form",
-        keywords: &["authorization", "agent"],
     },
 ];
 
-/// The exhaustive list of document categories the checklist grid can display,
-/// in the same order as `RENAME_RULES`.
+/// The exhaustive set of document categories `classify()` can produce, in
+/// first-occurrence order matching `RENAME_RULES` — deduplicated since a
+/// couple of categories are targeted by more than one rule.
 pub fn all_categories() -> Vec<&'static str> {
-    RENAME_RULES.iter().map(|rule| rule.category).collect()
+    let mut seen = std::collections::HashSet::new();
+    RENAME_RULES
+        .iter()
+        .map(|rule| rule.category)
+        .filter(|category| seen.insert(*category))
+        .collect()
 }
 
 /// Classifies a raw filename into a canonical document category by
-/// case-insensitive keyword match. Returns `None` if no rule matches.
+/// case-insensitive keyword match. Returns `None` if no rule matches (the
+/// UI falls back to "Manually Rename" in that case).
 pub fn classify(filename: &str) -> Option<&'static str> {
     let lower = filename.to_lowercase();
     RENAME_RULES
@@ -106,26 +148,60 @@ mod tests {
         let cases: &[(&str, &str)] = &[
             ("Passport.pdf", "Passport"),
             ("student_passport_scan.PDF", "Passport"),
-            ("academic_record.pdf", "Academic Transcripts"),
-            ("qualification_cert.pdf", "Academic Transcripts"),
-            ("transcript_2023.pdf", "Academic Transcripts"),
+            ("qualification_cert.pdf", "Qualifications"),
+            ("academic_record.pdf", "Qualifications"),
+            ("transcript_2023.pdf", "Qualifications"),
+            ("degree_certificate.pdf", "Qualifications"),
+            ("cv.pdf", "Updated CV"),
+            ("resume_final.pdf", "Updated CV"),
             ("english_test.pdf", "English Score"),
             ("ielts_result.pdf", "English Score"),
             ("pte_score.pdf", "English Score"),
             ("toefl.pdf", "English Score"),
-            ("SOP.pdf", "SOP"),
-            ("statement_of_purpose.pdf", "SOP"),
-            ("cv.pdf", "CV"),
-            ("resume_final.pdf", "CV"),
-            ("lor1.pdf", "LOR"),
-            ("recommendation_letter.pdf", "LOR"),
-            ("reference.pdf", "LOR"),
-            ("work_history.pdf", "Work Experience"),
-            ("employment_letter.pdf", "Work Experience"),
-            ("grading_scale.pdf", "Grading Scale"),
-            ("grade_sheet.pdf", "Grading Scale"),
-            ("authorization_form.pdf", "Agent Authorization Form"),
-            ("agent_agreement.pdf", "Agent Authorization Form"),
+            ("employment_letter.pdf", "Employment Documents"),
+            ("work_history.pdf", "Employment Documents"),
+            ("experience_letter.pdf", "Employment Documents"),
+            ("job_offer.pdf", "Employment Documents"),
+            ("internship_letter.pdf", "Employment Documents"),
+            ("recommendation_letter.pdf", "Recommendation Letter"),
+            ("reference.pdf", "Recommendation Letter"),
+            ("lor1.pdf", "Recommendation Letter"),
+            ("referee_form.pdf", "Recommendation Letter"),
+            // "application form"/"college form"/"university form" require a
+            // literal space too (see the nursing-keyword note above).
+            ("application form 2023.pdf", "Application Form (College / University)"),
+            ("college form.pdf", "Application Form (College / University)"),
+            ("university form.pdf", "Application Form (College / University)"),
+            ("SOP.pdf", "Statement of Purpose (SOP)"),
+            ("statement_of_purpose.pdf", "Statement of Purpose (SOP)"),
+            ("personal_statement.pdf", "Statement of Purpose (SOP)"),
+            ("immigration_docs.pdf", "Immigration History"),
+            ("travel_history.pdf", "Immigration History"),
+            ("authorisation_form.pdf", "Agent Authorisation Form"),
+            ("authorization_form.pdf", "Agent Authorisation Form"),
+            ("agent auth.pdf", "Agent Authorisation Form"),
+            // "nursing"/"pcl" only — a filename also containing an earlier
+            // rule's keyword (e.g. "experience") would match that instead.
+            ("nursing_document.pdf", "Min 2 years Work Experience (For PCL Nursing)"),
+            ("pcl_document.pdf", "Min 2 years Work Experience (For PCL Nursing)"),
+            // "registered nurse"/"police clearance" require a literal space
+            // (real aenapply filenames are underscore-separated, so these
+            // two rules are unlikely to ever fire against a real filename —
+            // exercised here as written in the spec regardless), and must
+            // avoid "certificate" or rule 2 would intercept first.
+            (
+                "registered nurse document.pdf",
+                "Registered Nurse Certificate (Compulsary for Nursing Programmes)",
+            ),
+            (
+                "police clearance form.pdf",
+                "Police Clearance Certificate (Mandatory for Nursing Pragrammes)",
+            ),
+            ("enrolment_form.pdf", "Enrolment Form"),
+            ("enrollment_form.pdf", "Enrolment Form"),
+            ("visa_copy.pdf", "Visa"),
+            ("grading_scale.pdf", "Qualifications"),
+            ("grade_sheet.pdf", "Qualifications"),
         ];
         for (filename, expected) in cases {
             assert_eq!(classify(filename), Some(*expected), "for {filename}");
@@ -139,24 +215,34 @@ mod tests {
 
     #[test]
     fn ambiguous_name_prefers_earlier_rule_in_priority_order() {
-        // Contains both "academic" (rule 2) and "reference" (rule 6) — rule 2 wins.
-        assert_eq!(classify("academic_reference.pdf"), Some("Academic Transcripts"));
+        // Contains both "academic" (rule 2, Qualifications) and "reference"
+        // (rule 6, Recommendation Letter) — rule 2 wins.
+        assert_eq!(classify("academic_reference.pdf"), Some("Qualifications"));
+    }
+
+    #[test]
+    fn all_categories_has_no_duplicates() {
+        let categories = all_categories();
+        let unique: std::collections::HashSet<_> = categories.iter().collect();
+        assert_eq!(categories.len(), unique.len());
+        assert!(categories.contains(&"Qualifications"));
+        assert!(categories.contains(&"Employment Documents"));
     }
 
     #[test]
     fn collisions_are_numbered_in_stable_order() {
         let classified = vec![
-            ("t1.pdf".to_string(), "Academic Transcripts".to_string()),
-            ("t2.pdf".to_string(), "Academic Transcripts".to_string()),
-            ("t3.pdf".to_string(), "Academic Transcripts".to_string()),
+            ("t1.pdf".to_string(), "Qualifications".to_string()),
+            ("t2.pdf".to_string(), "Qualifications".to_string()),
+            ("t3.pdf".to_string(), "Qualifications".to_string()),
         ];
         let resolved = resolve_collisions(&classified);
         assert_eq!(
             resolved,
             vec![
-                ("t1.pdf".to_string(), "Academic Transcripts.pdf".to_string()),
-                ("t2.pdf".to_string(), "Academic Transcripts 2.pdf".to_string()),
-                ("t3.pdf".to_string(), "Academic Transcripts 3.pdf".to_string()),
+                ("t1.pdf".to_string(), "Qualifications.pdf".to_string()),
+                ("t2.pdf".to_string(), "Qualifications 2.pdf".to_string()),
+                ("t3.pdf".to_string(), "Qualifications 3.pdf".to_string()),
             ]
         );
     }
@@ -165,14 +251,14 @@ mod tests {
     fn no_collision_when_categories_differ() {
         let classified = vec![
             ("p.pdf".to_string(), "Passport".to_string()),
-            ("c.pdf".to_string(), "CV".to_string()),
+            ("c.pdf".to_string(), "Updated CV".to_string()),
         ];
         let resolved = resolve_collisions(&classified);
         assert_eq!(
             resolved,
             vec![
                 ("p.pdf".to_string(), "Passport.pdf".to_string()),
-                ("c.pdf".to_string(), "CV.pdf".to_string()),
+                ("c.pdf".to_string(), "Updated CV.pdf".to_string()),
             ]
         );
     }

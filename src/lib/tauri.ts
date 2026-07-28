@@ -3,6 +3,7 @@ import type {
   DownloadSummary,
   FilterOptions,
   LoginResult,
+  SectionKey,
   ServerFilters,
   Settings,
   SettingsInput,
@@ -33,6 +34,7 @@ export function saveThemePreference(preference: ThemePreference): Promise<void> 
 }
 
 export function searchStudents(
+  section: SectionKey,
   query: string,
   start: number,
   length: number,
@@ -42,6 +44,7 @@ export function searchStudents(
     query,
     start,
     length,
+    section,
     branchId: filters.branchId,
     agentId: filters.agentId,
     countryId: filters.countryId,
@@ -55,6 +58,10 @@ export function getFilterOptions(): Promise<FilterOptions> {
 
 export function getStudentDetail(studentId: string): Promise<StudentDetail> {
   return invoke("get_student_detail", { studentId });
+}
+
+export function getDocumentCategories(country: string): Promise<string[]> {
+  return invoke("get_document_categories", { country });
 }
 
 export function downloadAndOrganize(

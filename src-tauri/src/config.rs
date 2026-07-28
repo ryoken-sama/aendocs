@@ -33,7 +33,7 @@ impl Default for ThemePreference {
     }
 }
 
-fn app_data_dir(app: &AppHandle) -> Result<PathBuf, AppError> {
+pub fn app_data_dir(app: &AppHandle) -> Result<PathBuf, AppError> {
     let dir = app.path().app_data_dir()?;
     std::fs::create_dir_all(&dir)?;
     Ok(dir)

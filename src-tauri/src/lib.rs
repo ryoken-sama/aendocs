@@ -3,6 +3,7 @@ mod auth;
 mod checklist;
 mod commands;
 mod config;
+mod document_categories;
 mod download;
 mod errors;
 mod http_client;
@@ -36,6 +37,7 @@ pub fn run() {
             commands::search_students,
             commands::get_filter_options,
             commands::get_student_detail,
+            commands::get_document_categories,
             commands::download_and_organize,
         ])
         .run(tauri::generate_context!())

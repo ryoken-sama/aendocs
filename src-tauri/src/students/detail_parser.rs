@@ -109,7 +109,7 @@ mod tests {
         let lor = &detail.documents[1];
         assert_eq!(lor.name, "LOR");
         assert_eq!(lor.filename, "lor_3.pdf");
-        assert_eq!(lor.suggested_category.as_deref(), Some("LOR"));
+        assert_eq!(lor.suggested_category.as_deref(), Some("Recommendation Letter"));
 
         // Unrecognized names are still listed (raw), just with no suggestion.
         let unrelated = &detail.documents[2];

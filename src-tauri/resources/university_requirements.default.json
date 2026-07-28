@@ -1,11 +1,49 @@
 {
   "default_required": [
     "Passport",
-    "Academic Transcripts",
+    "Qualifications",
     "English Score",
-    "SOP",
-    "CV",
-    "LOR"
+    "Statement of Purpose (SOP)",
+    "Updated CV",
+    "Recommendation Letter"
   ],
-  "overrides": {}
+  "overrides": {},
+  "countries": {
+    "New Zealand": [
+      "Passport",
+      "Qualifications",
+      "Updated CV",
+      "English Score",
+      "Employment Documents",
+      "Recommendation Letter",
+      "Application Form (College / University)",
+      "Statement of Purpose (SOP)",
+      "Immigration History",
+      "Agent Authorisation Form",
+      "Min 2 years Work Experience (For PCL Nursing)",
+      "Registered Nurse Certificate (Compulsary for Nursing Programmes)",
+      "Police Clearance Certificate (Mandatory for Nursing Pragrammes)",
+      "SOP (Mandatory for Masters Pragramme)",
+      "Self Disclosure Form (For Nursing Programme)",
+      "Additional Information Form (For Nursing Programme)",
+      "Reference Form (If Required)",
+      "Vet Nursing and Animal Care Health Declaration Form (For Nursing Programmes)",
+      "Police Vetting Form (For Nursing Programmes)",
+      "RPL (Recognition of Prior Learning) Form (If Required)",
+      "Agent Change Form (If Applied before from else)",
+      "Health Declaration Form (For Nursing Programmes)",
+      "Criminal Convictions self-declaration form (For Nursing Programmes)",
+      "Supplementary Form (For Nursing Programmes)",
+      "Referee Form (If Required)",
+      "Immune Status Policy (If Required)",
+      "Agent Application Verification Declaration Form",
+      "Enrolment Form",
+      "Eligibility Assessment Form (For NZ Diploma in Construction - Level 6)",
+      "Manually Rename"
+    ],
+    "UK": [],
+    "Australia": [],
+    "Canada": [],
+    "India": []
+  }
 }

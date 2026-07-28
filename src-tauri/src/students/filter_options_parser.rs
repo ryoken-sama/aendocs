@@ -1,13 +1,13 @@
 use scraper::{Html, Selector};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FilterOption {
     pub id: String,
     pub name: String,
 }
 
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct FilterOptions {
     pub branch: Vec<FilterOption>,
     pub agent: Vec<FilterOption>,

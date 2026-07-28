@@ -1,10 +1,13 @@
 use crate::app_state::AppState;
 use crate::auth::{self, LoginResult};
 use crate::config::{self, Settings, SettingsInput, ThemePreference};
+use crate::document_categories;
 use crate::download::{self, DownloadSummary};
 use crate::errors::AppError;
 use crate::keyring_store;
-use crate::students::{self, FilterOptions, SearchFilters, StudentDetail, StudentSearchResult, StudentSummary};
+use crate::students::{
+    self, FilterOptions, SearchFilters, Section, StudentDetail, StudentSearchResult, StudentSummary,
+};
 use std::collections::HashMap;
 use tauri::{AppHandle, State};
 
@@ -43,18 +46,20 @@ pub async fn search_students(
     query: String,
     start: u32,
     length: u32,
+    section: String,
     branch_id: String,
     agent_id: String,
     country_id: String,
     institution_id: String,
 ) -> Result<StudentSearchResult, AppError> {
+    let section = Section::from_key(&section)?;
     let filters = SearchFilters {
         branch_id: &branch_id,
         agent_id: &agent_id,
         country_id: &country_id,
         institution_id: &institution_id,
     };
-    students::search_students(&app, &state, &query, start, length, &filters).await
+    students::search_students(&app, &state, &query, start, length, section, &filters).await
 }
 
 #[tauri::command]
@@ -72,6 +77,11 @@ pub async fn get_student_detail(
     student_id: String,
 ) -> Result<StudentDetail, AppError> {
     students::get_student_detail(&app, &state, &student_id).await
+}
+
+#[tauri::command]
+pub async fn get_document_categories(app: AppHandle, country: String) -> Result<Vec<String>, AppError> {
+    Ok(document_categories::categories_for_country(&app, &country))
 }
 
 #[tauri::command]

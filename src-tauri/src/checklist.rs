@@ -97,11 +97,11 @@ mod tests {
         UniversityRequirements {
             default_required: vec![
                 "Passport".into(),
-                "Academic Transcripts".into(),
+                "Qualifications".into(),
                 "English Score".into(),
-                "SOP".into(),
-                "CV".into(),
-                "LOR".into(),
+                "Statement of Purpose (SOP)".into(),
+                "Updated CV".into(),
+                "Recommendation Letter".into(),
             ],
             overrides: HashMap::new(),
         }
@@ -110,14 +110,14 @@ mod tests {
     #[test]
     fn default_required_docs_present_and_missing() {
         let reqs = base_requirements();
-        let present = vec!["Passport".to_string(), "CV".to_string()];
+        let present = vec!["Passport".to_string(), "Updated CV".to_string()];
         let statuses = compute_status("Some University", &present, &reqs);
 
         let get = |cat: &str| statuses.iter().find(|s| s.category == cat).unwrap().status;
         assert_eq!(get("Passport"), DocStatus::Present);
-        assert_eq!(get("CV"), DocStatus::Present);
-        assert_eq!(get("SOP"), DocStatus::Missing);
-        assert_eq!(get("Work Experience"), DocStatus::NotRequired);
+        assert_eq!(get("Updated CV"), DocStatus::Present);
+        assert_eq!(get("Statement of Purpose (SOP)"), DocStatus::Missing);
+        assert_eq!(get("Employment Documents"), DocStatus::NotRequired);
     }
 
     #[test]
@@ -128,10 +128,10 @@ mod tests {
             UniversityOverride {
                 required: Some(vec![
                     "Passport".into(),
-                    "Academic Transcripts".into(),
-                    "SOP".into(),
-                    "CV".into(),
-                    "LOR".into(),
+                    "Qualifications".into(),
+                    "Statement of Purpose (SOP)".into(),
+                    "Updated CV".into(),
+                    "Recommendation Letter".into(),
                 ]),
                 additional: None,
             },
@@ -149,12 +149,12 @@ mod tests {
             "Example University".into(),
             UniversityOverride {
                 required: None,
-                additional: Some(vec!["Grading Scale".into()]),
+                additional: Some(vec!["Immigration History".into()]),
             },
         );
         let statuses = compute_status("  Example University  ", &[], &reqs);
         let get = |cat: &str| statuses.iter().find(|s| s.category == cat).unwrap().status;
-        assert_eq!(get("Grading Scale"), DocStatus::Missing);
+        assert_eq!(get("Immigration History"), DocStatus::Missing);
     }
 
     #[test]
@@ -170,6 +170,6 @@ mod tests {
         let statuses = compute_status("  test uni  ", &["Passport".to_string()], &reqs);
         let get = |cat: &str| statuses.iter().find(|s| s.category == cat).unwrap().status;
         assert_eq!(get("Passport"), DocStatus::Present);
-        assert_eq!(get("CV"), DocStatus::NotRequired);
+        assert_eq!(get("Updated CV"), DocStatus::NotRequired);
     }
 }

@@ -49,13 +49,26 @@ export interface FilterOptions {
 }
 
 /** IDs (not display names) sent to the server as DataTables queryStrings
- * filters. Empty string means "no filter" for that field. */
+ * filters. Empty string means "no filter" for that field. Shared across all
+ * 7 sidebar sections. */
 export interface ServerFilters {
   branchId: string;
   agentId: string;
   countryId: string;
   institutionId: string;
 }
+
+/** One of the 7 aenapply.com application-list views reachable from the
+ * sidebar. Must stay in sync with `Section::from_key` in the Rust backend
+ * (src-tauri/src/students/section.rs), which uses these exact strings. */
+export type SectionKey =
+  | "applications"
+  | "applied"
+  | "issued"
+  | "processing"
+  | "withdrawn"
+  | "rejected"
+  | "granted";
 
 export interface DetailDocEntry {
   name: string;
