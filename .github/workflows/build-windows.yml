@@ -1,4 +1,4 @@
-name: Build Windows installer
+name: Build Windows and Linux installers
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,8 +40,57 @@ jobs:
           releaseDraft: true
           prerelease: false
           includeUpdaterJson: true
-          # We only ever build the nsis target (see tauri.conf.json
-          # bundle.targets), so make that explicit rather than leaving
-          # tauri-action to infer which Windows artifact latest.json should
-          # point at.
+          # We only ever build the nsis target on Windows (see
+          # tauri.conf.json bundle.targets), so make that explicit rather
+          # than leaving tauri-action to infer which Windows artifact
+          # latest.json should point at.
           updaterJsonPreferNsis: true
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Tauri's Linux bundlers (.deb via dpkg-deb, .AppImage via
+      # linuxdeploy) and the webview itself need these system libraries —
+      # none of this ships with the ubuntu-latest runner by default.
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev \
+            libgtk-3-dev
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Same updater signing as the Windows job (see the comment
+          # there) — bundle.targets includes "deb" and "appimage" in
+          # tauri.conf.json, and the bundler only builds whichever of its
+          # configured targets are actually buildable on the current host,
+          # so this job produces just the .deb and .AppImage.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "AEN Docs ${{ github.ref_name }}"
+          releaseDraft: true
+          prerelease: false
+          includeUpdaterJson: true

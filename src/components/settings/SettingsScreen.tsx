@@ -5,11 +5,13 @@ import { TestLoginButton } from "./TestLoginButton";
 import { ThemeToggle } from "./ThemeToggle";
 import { BackButton } from "../layout/BackButton";
 import { useThemeContext } from "../../context/ThemeContext";
+import { useUpdateContext } from "../../context/UpdateContext";
 
 export function SettingsScreen() {
   const { email, setEmail, outputFolder, setOutputFolder, loading, saving, error, save } =
     useSettings();
   const { darkMode, setDarkMode } = useThemeContext();
+  const { appVersion, checking, checkResult, checkNow } = useUpdateContext();
   const [password, setPassword] = useState("");
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
 
@@ -92,6 +94,26 @@ export function SettingsScreen() {
 
       <div className="mt-6 border-t border-border pt-6">
         <TestLoginButton />
+      </div>
+
+      <div className="mt-6 border-t border-border pt-6">
+        <button
+          type="button"
+          onClick={checkNow}
+          disabled={checking}
+          className="rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-white/5 disabled:opacity-50"
+        >
+          {checking ? "Checking…" : "Check for Updates"}
+        </button>
+
+        {checkResult?.type === "up-to-date" && (
+          <p className="mt-2 text-sm text-success">You&apos;re on the latest version (v{checkResult.version}).</p>
+        )}
+        {checkResult?.type === "error" && (
+          <p className="mt-2 text-sm text-red-400">Could not check for updates. Please check your connection.</p>
+        )}
+
+        {appVersion && <p className="mt-3 text-xs text-muted">Version {appVersion}</p>}
       </div>
     </div>
   );
