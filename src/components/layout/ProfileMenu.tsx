@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { open } from "@tauri-apps/plugin-shell";
-import { getProfile, logout } from "../../lib/tauri";
+import { getUserProfile, logout } from "../../lib/tauri";
 import { useAppContext } from "../../context/AppContext";
 import type { UserProfile } from "../../types";
 
@@ -18,7 +18,7 @@ export function ProfileMenu() {
 
   useEffect(() => {
     let cancelled = false;
-    getProfile()
+    getUserProfile()
       .then((result) => {
         if (!cancelled) setProfile(result);
       })

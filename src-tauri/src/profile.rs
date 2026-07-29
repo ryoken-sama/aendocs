@@ -3,11 +3,11 @@ use crate::auth;
 use crate::config;
 use crate::errors::AppError;
 use reqwest::Client;
-use scraper::{Html, Selector};
+use scraper::{ElementRef, Html, Selector};
 use serde::Serialize;
 use tauri::AppHandle;
 
-const PROFILE_URL_CANDIDATES: &[&str] = &["https://aenapply.com/user/profile", "https://aenapply.com/profile"];
+const PROFILE_URL: &str = "https://aenapply.com/profile";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct UserProfile {
@@ -23,22 +23,28 @@ fn resolve_url(src: &str) -> String {
     }
 }
 
-/// Best-effort scrape of the logged-in user's name/photo from a profile
-/// page. UNVERIFIED — no sample HTML was available for either candidate
-/// URL, so this tries a small set of plausible selectors (a profile-edit
-/// form's `name` input, falling back to the first page heading, for the
-/// name; an avatar-ish `<img>` for the photo) rather than anything
-/// structurally specific. Returns `None` if nothing usable was found —
-/// the caller falls back to the configured email + a generic icon.
-fn parse_profile_html(html: &str) -> Option<UserProfile> {
-    let document = Html::parse_document(html);
-
-    let name = Selector::parse(r#"input[name="name"]"#)
-        .ok()
-        .and_then(|sel| document.select(&sel).next())
-        .and_then(|el| el.value().attr("value"))
-        .map(|s| s.trim().to_string())
+/// The name isn't inside the `<img>` itself (images carry no text content)
+/// — it's rendered as nearby text around the avatar, inside whatever
+/// profile-dropdown-toggle wraps it. Confirmed CSS target is only the
+/// image (`img.header-profile-user`); "near the profile image" for the
+/// name isn't a specific selector, so this takes the enclosing element's
+/// own text first, falling back to a couple of generic patterns already
+/// used elsewhere in the app if that comes up empty.
+fn extract_name_near(document: &Html, img: &ElementRef) -> String {
+    img.parent()
+        .and_then(ElementRef::wrap)
+        .map(|el| el.text().collect::<String>().trim().to_string())
         .filter(|s| !s.is_empty())
+        .or_else(|| {
+            Selector::parse(r#"input[name="name"]"#).ok().and_then(|sel| {
+                document
+                    .select(&sel)
+                    .next()
+                    .and_then(|el| el.value().attr("value"))
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+            })
+        })
         .or_else(|| {
             Selector::parse("h1, h2, h3, h4").ok().and_then(|sel| {
                 document
@@ -46,39 +52,39 @@ fn parse_profile_html(html: &str) -> Option<UserProfile> {
                     .map(|el| el.text().collect::<String>().trim().to_string())
                     .find(|s| !s.is_empty())
             })
-        })?;
+        })
+        .unwrap_or_default()
+}
 
-    let photo_url = Selector::parse("img[class*='avatar'], img[class*='rounded-circle'], img[class*='profile']")
-        .ok()
-        .and_then(|sel| document.select(&sel).next())
-        .and_then(|el| el.value().attr("src"))
-        .map(resolve_url);
+/// Scrapes `https://aenapply.com/profile` for the logged-in user's photo
+/// (confirmed target: `img.header-profile-user`'s `src`) and name (best
+/// effort — see extract_name_near). Returns `None` only if the confirmed
+/// photo selector itself matches nothing, since that's the one signal
+/// here that's actually been checked against the live site.
+fn parse_profile_html(html: &str) -> Option<UserProfile> {
+    let document = Html::parse_document(html);
+
+    let img_selector = Selector::parse("img.header-profile-user").ok()?;
+    let img = document.select(&img_selector).next()?;
+    let photo_url = img.value().attr("src").map(resolve_url);
+    let name = extract_name_near(&document, &img);
 
     Some(UserProfile { name, photo_url })
 }
 
 async fn fetch_user_profile(client: &Client) -> Option<UserProfile> {
-    for url in PROFILE_URL_CANDIDATES {
-        let Ok(response) = client.get(*url).send().await else {
-            continue;
-        };
-        if !response.status().is_success() {
-            continue;
-        }
-        let Ok(html) = response.text().await else {
-            continue;
-        };
-        if let Some(profile) = parse_profile_html(&html) {
-            return Some(profile);
-        }
+    let response = client.get(PROFILE_URL).send().await.ok()?;
+    if !response.status().is_success() {
+        return None;
     }
-    None
+    let html = response.text().await.ok()?;
+    parse_profile_html(&html)
 }
 
 /// Returns the cached profile if this session already fetched one;
-/// otherwise ensures login, fetches (trying both candidate URLs), caches,
-/// and returns it. Never fails the caller over a profile-fetch problem —
-/// degrades to the configured email with no photo instead.
+/// otherwise ensures login, fetches, caches, and returns it. Never fails
+/// the caller over a profile-fetch problem — degrades to the configured
+/// email (if the name specifically couldn't be found) and no photo.
 pub async fn get_profile(app: &AppHandle, state: &AppState) -> Result<UserProfile, AppError> {
     auth::ensure_logged_in(app, state).await?;
 
@@ -90,10 +96,18 @@ pub async fn get_profile(app: &AppHandle, state: &AppState) -> Result<UserProfil
     }
 
     let fetched = fetch_user_profile(&state.http_client).await;
-    let resolved = fetched.unwrap_or_else(|| UserProfile {
-        name: config::load_settings(app).map(|s| s.email).unwrap_or_default(),
-        photo_url: None,
-    });
+    let resolved = match fetched {
+        Some(mut profile) => {
+            if profile.name.is_empty() {
+                profile.name = config::load_settings(app).map(|s| s.email).unwrap_or_default();
+            }
+            profile
+        }
+        None => UserProfile {
+            name: config::load_settings(app).map(|s| s.email).unwrap_or_default(),
+            photo_url: None,
+        },
+    };
 
     let mut cached = state.profile.write().expect("profile lock poisoned");
     *cached = Some(resolved.clone());
@@ -112,42 +126,37 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parses_name_from_profile_form_input() {
-        let html = r#"<html><body><form><input name="name" value="Prabin Dhakal"></form></body></html>"#;
-        let profile = parse_profile_html(html).unwrap();
-        assert_eq!(profile.name, "Prabin Dhakal");
-        assert_eq!(profile.photo_url, None);
-    }
-
-    #[test]
-    fn falls_back_to_heading_when_no_name_input() {
-        let html = r#"<html><body><h2>Prabin Dhakal</h2></body></html>"#;
-        let profile = parse_profile_html(html).unwrap();
-        assert_eq!(profile.name, "Prabin Dhakal");
-    }
-
-    #[test]
-    fn parses_avatar_photo_url_and_resolves_relative_path() {
+    fn parses_photo_and_name_from_confirmed_selector() {
         let html = r#"<html><body>
-            <input name="name" value="Prabin Dhakal">
-            <img class="rounded-circle avatar-xl" src="/storage/photos/prabin.jpg">
+            <a class="nav-link dropdown-toggle" href="/profile">
+              <img class="rounded-circle header-profile-user" src="/storage/photos/prabin.jpg">
+              <span>Prabin Dhakal</span>
+            </a>
         </body></html>"#;
         let profile = parse_profile_html(html).unwrap();
         assert_eq!(profile.photo_url.as_deref(), Some("https://aenapply.com/storage/photos/prabin.jpg"));
+        assert_eq!(profile.name, "Prabin Dhakal");
     }
 
     #[test]
     fn keeps_absolute_photo_url_unchanged() {
-        let html = r#"<html><body>
-            <input name="name" value="Prabin Dhakal">
-            <img class="avatar" src="https://cdn.example.com/p.jpg">
-        </body></html>"#;
+        let html = r#"<img class="header-profile-user" src="https://cdn.example.com/p.jpg">"#;
         let profile = parse_profile_html(html).unwrap();
         assert_eq!(profile.photo_url.as_deref(), Some("https://cdn.example.com/p.jpg"));
     }
 
     #[test]
-    fn returns_none_when_nothing_useful_found() {
+    fn falls_back_to_name_input_when_nothing_near_the_image() {
+        let html = r#"<html><body>
+            <img class="header-profile-user" src="/p.jpg">
+            <input name="name" value="Prabin Dhakal">
+        </body></html>"#;
+        let profile = parse_profile_html(html).unwrap();
+        assert_eq!(profile.name, "Prabin Dhakal");
+    }
+
+    #[test]
+    fn returns_none_when_confirmed_selector_matches_nothing() {
         assert!(parse_profile_html("<html><body>Nothing here.</body></html>").is_none());
     }
 }

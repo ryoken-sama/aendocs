@@ -4,25 +4,33 @@ import { useStudentsContext } from "../../context/StudentsContext";
 import { useStudentListContext } from "../../context/StudentListContext";
 import { StatCard } from "./StatCard";
 import { HorizontalBarChart } from "./HorizontalBarChart";
-import { ChartSkeleton } from "./ChartSkeleton";
+import { PanelLoadingText } from "./PanelLoadingText";
 import { RecentApplicationsList } from "./RecentApplicationsList";
-import { RecentApplicationsListSkeleton } from "./RecentApplicationsListSkeleton";
 import type { SectionKey, ServerFilters } from "../../types";
 
 const EMPTY_SERVER_FILTERS: ServerFilters = { branchId: "", agentId: "", countryId: "", institutionId: "" };
+
+const STUDENT_COUNTS_LOADING_TEXT = "Loading student counts…";
+const APPLICATION_STATS_LOADING_TEXT = "Loading application stats…";
+const RECENT_ACTIVITY_LOADING_TEXT = "Loading recent activity…";
+const COUNTRY_BREAKDOWN_LOADING_TEXT = "Loading country breakdown…";
 
 export function DashboardScreen() {
   const {
     loading,
     error,
     refresh,
+    studentsLoading,
     totalStudents,
+    applicationsLoading,
     totalApplications,
     visaGranted,
     offerApplied,
     statusBreakdown,
-    countryBreakdown,
+    recentLoading,
     recentApplications,
+    countryLoading,
+    countryBreakdown,
   } = useDashboardContext();
   const { goToSearch, goToStudentsList } = useAppContext();
   const { setActiveSection, setServerFilters } = useStudentsContext();
@@ -77,9 +85,8 @@ export function DashboardScreen() {
         // A failed dashboard load is overwhelmingly a login/session problem
         // — every one of the dashboard's fetches depends on the same
         // ensure_logged_in() call, so when that fails they all fail
-        // together. Showing stat cards stuck on skeletons (or charts
-        // quietly rendering "no data") would look like an empty account
-        // rather than a real failure, so replace the whole content area
+        // together. Showing stat cards/panels as if the account were just
+        // empty would be misleading, so replace the whole content area
         // with an explicit prompt instead.
         <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-border bg-surface p-10 text-center">
           <i className="ri-lock-line text-3xl text-muted" aria-hidden="true" />
@@ -101,28 +108,32 @@ export function DashboardScreen() {
               icon="ri-team-line"
               label="Total Students"
               value={totalStudents}
-              loading={loading}
+              loading={studentsLoading}
+              loadingText={STUDENT_COUNTS_LOADING_TEXT}
               onClick={goToAllStudents}
             />
             <StatCard
               icon="ri-file-list-3-line"
               label="Total Applications"
               value={totalApplications}
-              loading={loading}
+              loading={applicationsLoading}
+              loadingText={APPLICATION_STATS_LOADING_TEXT}
               onClick={() => goToStudyAbroadSection("applications")}
             />
             <StatCard
               icon="ri-checkbox-circle-line"
               label="Visa Granted"
               value={visaGranted}
-              loading={loading}
+              loading={applicationsLoading}
+              loadingText={APPLICATION_STATS_LOADING_TEXT}
               onClick={() => goToStudyAbroadSection("granted")}
             />
             <StatCard
               icon="ri-send-plane-line"
               label="Offer Applied"
               value={offerApplied}
-              loading={loading}
+              loading={applicationsLoading}
+              loadingText={APPLICATION_STATS_LOADING_TEXT}
               onClick={() => goToStudyAbroadSection("applied")}
             />
           </div>
@@ -131,8 +142,8 @@ export function DashboardScreen() {
             <div className="rounded-xl border border-border bg-surface p-4">
               <h3 className="text-sm font-semibold text-ink">Applications by Status</h3>
               <div className="mt-3">
-                {loading ? (
-                  <ChartSkeleton />
+                {applicationsLoading ? (
+                  <PanelLoadingText text={APPLICATION_STATS_LOADING_TEXT} />
                 ) : (
                   <HorizontalBarChart
                     data={statusBreakdown.map((s) => ({ label: s.label, count: s.count }))}
@@ -145,8 +156,8 @@ export function DashboardScreen() {
             <div className="rounded-xl border border-border bg-surface p-4">
               <h3 className="text-sm font-semibold text-ink">Recent Applications</h3>
               <div className="mt-3">
-                {loading ? (
-                  <RecentApplicationsListSkeleton />
+                {recentLoading ? (
+                  <PanelLoadingText text={RECENT_ACTIVITY_LOADING_TEXT} />
                 ) : (
                   <RecentApplicationsList applications={recentApplications} />
                 )}
@@ -157,8 +168,8 @@ export function DashboardScreen() {
           <div className="mt-6 rounded-xl border border-border bg-surface p-4">
             <h3 className="text-sm font-semibold text-ink">Applications by Country</h3>
             <div className="mt-3">
-              {loading ? (
-                <ChartSkeleton />
+              {countryLoading ? (
+                <PanelLoadingText text={COUNTRY_BREAKDOWN_LOADING_TEXT} />
               ) : countryBreakdown.length === 0 ? (
                 <p className="text-sm text-muted">No country data available.</p>
               ) : (

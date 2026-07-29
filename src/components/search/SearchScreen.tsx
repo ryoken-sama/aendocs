@@ -1,6 +1,8 @@
 import { useStudentsContext } from "../../context/StudentsContext";
 import { useFilterOptions } from "../../hooks/useFilterOptions";
+import { useDebouncedSearchInput } from "../../hooks/useDebouncedSearchInput";
 import { SECTIONS } from "../../constants";
+import { SearchBar } from "./SearchBar";
 import { ResultsTable } from "./ResultsTable";
 import { ResultsTableSkeleton } from "./ResultsTableSkeleton";
 import { FilterBar, type StudentFilters } from "./FilterBar";
@@ -17,12 +19,15 @@ export function SearchScreen() {
     refresh,
     serverFilters,
     setServerFilters,
+    query,
+    setQuery,
     page,
     setPage,
   } = useStudentsContext();
 
   const { options: filterOptionSource } = useFilterOptions();
   const sectionLabel = SECTIONS.find((s) => s.key === activeSection)?.label ?? "";
+  const [localQuery, setLocalQuery] = useDebouncedSearchInput(query, setQuery, setPage, activeSection);
 
   function handleFilterChange(field: keyof StudentFilters, value: string) {
     setServerFilters((prev) => ({ ...prev, [field]: value }));
@@ -32,6 +37,10 @@ export function SearchScreen() {
   return (
     <div className="p-6">
       <h2 className="text-xl font-semibold">{sectionLabel}</h2>
+
+      <div className="mt-4 max-w-md">
+        <SearchBar value={localQuery} onChange={setLocalQuery} />
+      </div>
 
       <div className="mt-4">
         <FilterBar options={filterOptionSource} filters={serverFilters} onChange={handleFilterChange} />

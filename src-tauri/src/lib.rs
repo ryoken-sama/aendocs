@@ -30,7 +30,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            commands::get_profile,
+            commands::get_user_profile,
             commands::logout,
             commands::get_settings,
             commands::save_settings,

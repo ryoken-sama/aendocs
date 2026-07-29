@@ -14,6 +14,7 @@ import { DetailScreen } from "./components/detail/DetailScreen";
 import { StudentsListScreen } from "./components/students-list/StudentsListScreen";
 import { StudentDetailScreen } from "./components/students-list/StudentDetailScreen";
 import { UpdateModal } from "./components/layout/UpdateModal";
+import { SplashGate } from "./components/layout/SplashGate";
 
 function Screens() {
   const { screen } = useAppContext();
@@ -62,7 +63,9 @@ function App() {
           <StudentListProvider>
             <DashboardProvider>
               <UpdateProvider>
-                <AppShell />
+                <SplashGate>
+                  <AppShell />
+                </SplashGate>
               </UpdateProvider>
             </DashboardProvider>
           </StudentListProvider>

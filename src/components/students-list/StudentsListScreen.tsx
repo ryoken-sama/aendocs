@@ -1,7 +1,9 @@
 import { useStudentListContext } from "../../context/StudentListContext";
+import { useDebouncedSearchInput } from "../../hooks/useDebouncedSearchInput";
 import { StudentsListResultsTable } from "./StudentsListResultsTable";
 import { StudentsListResultsTableSkeleton } from "./StudentsListResultsTableSkeleton";
 import { Paginator } from "../search/Paginator";
+import { SearchBar } from "../search/SearchBar";
 import type { StudentsFilterSelection } from "../../types";
 
 function filterHeading(filter: StudentsFilterSelection): string {
@@ -22,13 +24,20 @@ function filterHeading(filter: StudentsFilterSelection): string {
  * not by a FilterBar like the Study Abroad screen, since that selection
  * already fixes the one dimension that matters here. */
 export function StudentsListScreen() {
-  const { filter, students, totalCount, totalPages, loading, error, refresh, page, setPage } = useStudentListContext();
+  const { filter, students, totalCount, totalPages, loading, error, refresh, query, setQuery, page, setPage } =
+    useStudentListContext();
+  const filterKey = JSON.stringify(filter);
+  const [localQuery, setLocalQuery] = useDebouncedSearchInput(query, setQuery, setPage, filterKey);
 
   return (
     <div className="p-6">
       <h2 className="text-xl font-semibold">{filterHeading(filter)}</h2>
 
-      <div className="mt-2 flex items-center gap-1.5 text-xs text-muted">
+      <div className="mt-4 max-w-md">
+        <SearchBar value={localQuery} onChange={setLocalQuery} />
+      </div>
+
+      <div className="mt-4 flex items-center gap-1.5 text-xs text-muted">
         <span>
           {loading
             ? "Loading…"

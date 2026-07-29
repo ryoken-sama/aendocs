@@ -17,8 +17,8 @@ import type {
   UserProfile,
 } from "../types";
 
-export function getProfile(): Promise<UserProfile> {
-  return invoke("get_profile");
+export function getUserProfile(): Promise<UserProfile> {
+  return invoke("get_user_profile");
 }
 
 export function logout(): Promise<void> {

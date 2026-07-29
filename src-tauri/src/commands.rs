@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use tauri::{AppHandle, State};
 
 #[tauri::command]
-pub async fn get_profile(app: AppHandle, state: State<'_, AppState>) -> Result<UserProfile, AppError> {
+pub async fn get_user_profile(app: AppHandle, state: State<'_, AppState>) -> Result<UserProfile, AppError> {
     profile::get_profile(&app, &state).await
 }
 

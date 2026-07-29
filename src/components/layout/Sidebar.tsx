@@ -3,6 +3,7 @@ import { SECTIONS } from "../../constants";
 import { useAppContext } from "../../context/AppContext";
 import { useStudentsContext } from "../../context/StudentsContext";
 import { useStudentListContext } from "../../context/StudentListContext";
+import { useDashboardContext } from "../../context/DashboardContext";
 import { useFilterOptions } from "../../hooks/useFilterOptions";
 import type { FilterOption, SectionKey, StudentsFilterSelection } from "../../types";
 import aenLogo from "../../assets/aen-logo.png";
@@ -33,8 +34,22 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const { screen, goToDashboard, goToSearch, goToStudentsList, goToSettings } = useAppContext();
   const { activeSection, setActiveSection } = useStudentsContext();
   const { filter: studentsFilter, setFilter: setStudentsFilter } = useStudentListContext();
+  const { refresh: refreshDashboard } = useDashboardContext();
   const { options: filterOptions } = useFilterOptions();
   const [expandedGroup, setExpandedGroup] = useState<ExpandableGroupKey | null>(null);
+
+  const isDashboard = screen.name === "dashboard";
+
+  // The logo doubles as a home button: from anywhere else it navigates
+  // home; already home, it re-fires the dashboard's fetches instead of
+  // doing nothing.
+  function handleLogoClick() {
+    if (isDashboard) {
+      refreshDashboard();
+    } else {
+      goToDashboard();
+    }
+  }
 
   function handleSelectSection(key: SectionKey) {
     setActiveSection(key);
@@ -84,11 +99,19 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           collapsed ? "flex-col gap-2 py-4" : "justify-between px-4 py-4"
         }`}
       >
-        {collapsed ? (
-          <img src={accessIcon} alt="AEN" className="h-8 w-8" />
-        ) : (
-          <img src={aenLogo} alt="AEN Education Network" className="h-8 w-auto" />
-        )}
+        <button
+          type="button"
+          onClick={handleLogoClick}
+          aria-label={isDashboard ? "Refresh dashboard" : "Go to Dashboard"}
+          title={isDashboard ? "Refresh dashboard" : "Go to Dashboard"}
+          className="cursor-pointer rounded-lg opacity-90 transition-opacity hover:opacity-100"
+        >
+          {collapsed ? (
+            <img src={accessIcon} alt="AEN" className="h-8 w-8" />
+          ) : (
+            <img src={aenLogo} alt="AEN Education Network" className="h-8 w-auto" />
+          )}
+        </button>
         <button
           type="button"
           onClick={onToggleCollapsed}
