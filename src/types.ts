@@ -18,6 +18,11 @@ export interface ThemePreference {
   dark_mode: boolean;
 }
 
+export interface UserProfile {
+  name: string;
+  photo_url: string | null;
+}
+
 export interface StudentSummary {
   id: string;
   students_id: string;
@@ -87,3 +92,42 @@ export interface DownloadSummary {
   output_path: string;
   missing_categories: string[];
 }
+
+/** One row from the `/students` roster — distinct from `StudentSummary`,
+ * which is one row of a specific *application* (`/offerapplications*`). A
+ * student can have several applications; this is just their profile. */
+export interface StudentListEntry {
+  id: string;
+  students_id: string;
+  name: string;
+  email: string;
+  mobile: string;
+  branch: string;
+  country: string;
+  visa_status: string;
+  counselor: string;
+  status: string;
+}
+
+export interface StudentListResult {
+  records_total: number;
+  records_filtered: number;
+  students: StudentListEntry[];
+}
+
+/** A link to one of a student's individual applications, scraped from their
+ * `/students/show/{id}` profile page — `id` is the `offerapplication_id`,
+ * usable with the existing offerapplications detail fetch. */
+export interface StudentApplicationLink {
+  id: string;
+  label: string;
+}
+
+/** Which sidebar "Students" item is selected — "all", or one specific
+ * branch/agent/country picked from an expandable submenu. `label` is kept
+ * alongside `id` purely for display (the id is what's sent server-side). */
+export type StudentsFilterSelection =
+  | { type: "all" }
+  | { type: "branch"; id: string; label: string }
+  | { type: "agent"; id: string; label: string }
+  | { type: "country"; id: string; label: string };

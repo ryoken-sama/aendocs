@@ -5,11 +5,25 @@ use crate::document_categories;
 use crate::download::{self, DownloadSummary};
 use crate::errors::AppError;
 use crate::keyring_store;
+use crate::profile::{self, UserProfile};
 use crate::students::{
-    self, FilterOptions, SearchFilters, Section, StudentDetail, StudentSearchResult, StudentSummary,
+    self, FilterOptions, SearchFilters, Section, StudentApplicationLink, StudentDetail, StudentListResult,
+    StudentSearchResult, StudentSummary, StudentsListFilter,
 };
 use std::collections::HashMap;
 use tauri::{AppHandle, State};
+
+#[tauri::command]
+pub async fn get_profile(app: AppHandle, state: State<'_, AppState>) -> Result<UserProfile, AppError> {
+    profile::get_profile(&app, &state).await
+}
+
+#[tauri::command]
+pub async fn logout(state: State<'_, AppState>) -> Result<(), AppError> {
+    auth::logout(&state);
+    profile::clear(&state);
+    Ok(())
+}
 
 #[tauri::command]
 pub async fn get_settings(app: AppHandle) -> Result<Settings, AppError> {
@@ -82,6 +96,34 @@ pub async fn get_student_detail(
 #[tauri::command]
 pub async fn get_document_categories(app: AppHandle, country: String) -> Result<Vec<String>, AppError> {
     Ok(document_categories::categories_for_country(&app, &country))
+}
+
+#[tauri::command]
+pub async fn search_students_list(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    query: String,
+    start: u32,
+    length: u32,
+    branch_id: String,
+    agent_id: String,
+    country_id: String,
+) -> Result<StudentListResult, AppError> {
+    let filter = StudentsListFilter {
+        branch_id: &branch_id,
+        agent_id: &agent_id,
+        country_id: &country_id,
+    };
+    students::search_students_list(&app, &state, &query, start, length, &filter).await
+}
+
+#[tauri::command]
+pub async fn get_student_applications(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    students_id: String,
+) -> Result<Vec<StudentApplicationLink>, AppError> {
+    students::get_student_applications(&app, &state, &students_id).await
 }
 
 #[tauri::command]

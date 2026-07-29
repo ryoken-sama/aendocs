@@ -1,3 +1,4 @@
+use crate::profile::UserProfile;
 use reqwest::Client;
 use std::sync::RwLock;
 
@@ -8,6 +9,7 @@ pub struct SessionInfo {
 pub struct AppState {
     pub http_client: Client,
     pub session: RwLock<Option<SessionInfo>>,
+    pub profile: RwLock<Option<UserProfile>>,
 }
 
 impl AppState {
@@ -15,6 +17,7 @@ impl AppState {
         Self {
             http_client: crate::http_client::build_client(),
             session: RwLock::new(None),
+            profile: RwLock::new(None),
         }
     }
 }

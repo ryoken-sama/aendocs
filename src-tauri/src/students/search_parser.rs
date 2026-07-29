@@ -1,3 +1,4 @@
+use super::html_util::decode_and_strip_tags;
 use crate::errors::AppError;
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
@@ -41,32 +42,6 @@ fn value_to_string(v: &Value) -> String {
         Value::Null => String::new(),
         other => other.to_string(),
     }
-}
-
-/// Decodes the small set of HTML entities `progress_status_name` uses, e.g.
-/// `&lt;span&gt;` for a literal `<span>`.
-fn decode_html_entities(input: &str) -> String {
-    input
-        .replace("&quot;", "\"")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&#39;", "'")
-        .replace("&apos;", "'")
-        .replace("&amp;", "&")
-}
-
-/// `progress_status_name` arrives HTML-encoded, e.g.
-/// `&lt;span class=&quot;fw-meduim text-info&quot;&gt;Document Submitted&lt;/span&gt;`.
-/// Decodes the entities and strips all tags, keeping only the plain text
-/// (e.g. "Document Submitted").
-fn extract_status(raw: &str) -> String {
-    let decoded = decode_html_entities(raw);
-    Html::parse_fragment(&decoded)
-        .root_element()
-        .text()
-        .collect::<String>()
-        .trim()
-        .to_string()
 }
 
 /// Parses the `student` field's raw HTML, e.g.
@@ -157,7 +132,7 @@ fn parse_row(row: &Value) -> StudentSummary {
         .get("progress_status_name")
         .or_else(|| row.get("status"))
         .and_then(Value::as_str)
-        .map(extract_status)
+        .map(decode_and_strip_tags)
         .unwrap_or_default();
 
     let (name, students_id, branch) = parse_student_fields(student_html);

@@ -1,34 +1,47 @@
 import { useEffect, useState } from "react";
 import { useAppContext } from "../../context/AppContext";
 import { useStudentsContext } from "../../context/StudentsContext";
+import { useStudentListContext } from "../../context/StudentListContext";
 import { SearchBar } from "../search/SearchBar";
+import { ProfileMenu } from "./ProfileMenu";
 
 const DEBOUNCE_MS = 300;
 
 export function NavBar() {
-  const { screen, goToSettings } = useAppContext();
-  const { activeSection, query, setQuery, setPage } = useStudentsContext();
+  const { screen } = useAppContext();
+  const studentsCtx = useStudentsContext();
+  const studentListCtx = useStudentListContext();
+
+  const isStudyAbroadSearch = screen.name === "search";
+  const isStudentsListSearch = screen.name === "students-list";
+  const showSearchBar = isStudyAbroadSearch || isStudentsListSearch;
+
+  // Which context's query the search bar is currently bound to depends on
+  // which of the two searchable screens is active.
+  const activeQuery = isStudentsListSearch ? studentListCtx.query : studentsCtx.query;
+  const setActiveQuery = isStudentsListSearch ? studentListCtx.setQuery : studentsCtx.setQuery;
+  const setActivePage = isStudentsListSearch ? studentListCtx.setPage : studentsCtx.setPage;
 
   // The query itself now triggers a real server request (see
-  // StudentsContext), so typing is debounced locally before it's pushed up
-  // — otherwise every keystroke would fire its own request. `localValue`
-  // stays instantly responsive for the input; only the committed value
-  // after a pause reaches context.query.
-  const [localValue, setLocalValue] = useState(query);
+  // StudentsContext/StudentListContext), so typing is debounced locally
+  // before it's pushed up — otherwise every keystroke would fire its own
+  // request. `localValue` stays instantly responsive for the input; only
+  // the committed value after a pause reaches the active context's query.
+  const [localValue, setLocalValue] = useState(activeQuery);
 
-  // Section switches (or returning from Detail) change context.query
-  // directly, not via typing — snap the input to match immediately rather
-  // than waiting out the debounce.
+  // Switching screens, the Study Abroad section, or the Students filter all
+  // change which query is "active" directly, not via typing — snap the
+  // input to match immediately rather than waiting out the debounce.
   useEffect(() => {
-    setLocalValue(query);
+    setLocalValue(activeQuery);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSection]);
+  }, [screen.name, studentsCtx.activeSection, studentListCtx.filter]);
 
   useEffect(() => {
-    if (localValue === query) return;
+    if (localValue === activeQuery) return;
     const timer = setTimeout(() => {
-      setQuery(localValue);
-      setPage(0);
+      setActiveQuery(localValue);
+      setActivePage(0);
     }, DEBOUNCE_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -39,7 +52,7 @@ export function NavBar() {
       <div />
 
       <div className="flex justify-center">
-        {screen.name === "search" && (
+        {showSearchBar && (
           <div className="w-full max-w-md">
             <SearchBar value={localValue} onChange={setLocalValue} />
           </div>
@@ -47,17 +60,7 @@ export function NavBar() {
       </div>
 
       <div className="flex justify-end">
-        {screen.name !== "settings" && (
-          <button
-            type="button"
-            onClick={goToSettings}
-            aria-label="Settings"
-            title="Settings"
-            className="rounded-lg p-2 text-muted hover:bg-white/5 hover:text-ink"
-          >
-            <i className="ri-settings-3-line text-lg leading-none" aria-hidden="true" />
-          </button>
-        )}
+        <ProfileMenu />
       </div>
     </header>
   );

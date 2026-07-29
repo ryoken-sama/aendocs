@@ -7,11 +7,22 @@ import type {
   ServerFilters,
   Settings,
   SettingsInput,
+  StudentApplicationLink,
   StudentDetail,
+  StudentListResult,
   StudentSearchResult,
   StudentSummary,
   ThemePreference,
+  UserProfile,
 } from "../types";
+
+export function getProfile(): Promise<UserProfile> {
+  return invoke("get_profile");
+}
+
+export function logout(): Promise<void> {
+  return invoke("logout");
+}
 
 export function getSettings(): Promise<Settings> {
   return invoke("get_settings");
@@ -69,4 +80,19 @@ export function downloadAndOrganize(
   categoryOverrides: Record<string, string>,
 ): Promise<DownloadSummary> {
   return invoke("download_and_organize", { student, categoryOverrides });
+}
+
+export function searchStudentsList(
+  query: string,
+  start: number,
+  length: number,
+  branchId: string,
+  agentId: string,
+  countryId: string,
+): Promise<StudentListResult> {
+  return invoke("search_students_list", { query, start, length, branchId, agentId, countryId });
+}
+
+export function getStudentApplications(studentsId: string): Promise<StudentApplicationLink[]> {
+  return invoke("get_student_applications", { studentsId });
 }

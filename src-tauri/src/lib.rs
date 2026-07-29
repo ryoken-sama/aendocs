@@ -9,6 +9,7 @@ mod errors;
 mod http_client;
 mod keyring_store;
 mod path_builder;
+mod profile;
 mod progress;
 mod rename_rules;
 mod students;
@@ -29,6 +30,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::get_profile,
+            commands::logout,
             commands::get_settings,
             commands::save_settings,
             commands::test_login,
@@ -38,6 +41,8 @@ pub fn run() {
             commands::get_filter_options,
             commands::get_student_detail,
             commands::get_document_categories,
+            commands::search_students_list,
+            commands::get_student_applications,
             commands::download_and_organize,
         ])
         .run(tauri::generate_context!())

@@ -128,3 +128,12 @@ pub async fn test_login(app: &AppHandle, state: &AppState) -> LoginResult {
         },
     }
 }
+
+/// Clears the in-memory session — the next request that needs one (via
+/// `ensure_logged_in`) will log in again using whatever email/password are
+/// currently saved in Settings. Does not touch the saved settings or
+/// keyring password themselves.
+pub fn logout(state: &AppState) {
+    let mut session = state.session.write().expect("session lock poisoned");
+    *session = None;
+}
