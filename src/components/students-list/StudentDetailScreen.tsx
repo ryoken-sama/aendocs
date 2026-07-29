@@ -3,13 +3,13 @@ import { getStudentApplications } from "../../lib/tauri";
 import { useAppContext } from "../../context/AppContext";
 import type { StudentApplicationLink, StudentListEntry } from "../../types";
 import { BackButton } from "../layout/BackButton";
+import { StatusPill } from "../layout/StatusPill";
 
 const INFO_ROWS: [string, keyof StudentListEntry][] = [
   ["Email", "email"],
   ["Mobile", "mobile"],
   ["Branch", "branch"],
   ["Country", "country"],
-  ["Visa Status", "visa_status"],
   ["Counselor", "counselor"],
 ];
 
@@ -45,22 +45,16 @@ export function StudentDetailScreen({ student }: { student: StudentListEntry }) 
   }, [student.students_id]);
 
   function handleOpenApplication(app: StudentApplicationLink) {
-    // Only the offerapplication id + this profile's own fields are known
-    // here — university/program/status aren't available without also
-    // scraping /students/show/{id}'s markup for them, which is unverified
-    // (see applications_link_parser.rs). The document list below still
-    // fetches correctly by id; StudentInfoCard just shows em-dashes for the
-    // fields this page can't supply yet.
     goToDetail({
       id: app.id,
       students_id: student.students_id,
-      application_id: "",
+      application_id: app.application_id,
       name: student.name,
       branch: student.branch,
-      country: student.country,
-      university: "",
-      program: app.label,
-      status: "",
+      country: app.country || student.country,
+      university: app.university,
+      program: app.program,
+      status: app.status,
     });
   }
 
@@ -80,6 +74,12 @@ export function StudentDetailScreen({ student }: { student: StudentListEntry }) 
                 <dd className="text-ink">{student[key] || "—"}</dd>
               </div>
             ))}
+            <div>
+              <dt className="text-muted">Visa Status</dt>
+              <dd className="mt-0.5">
+                {student.visa_status ? <StatusPill status={student.visa_status} /> : <span className="text-ink">—</span>}
+              </dd>
+            </div>
           </dl>
         </div>
 
@@ -98,10 +98,22 @@ export function StudentDetailScreen({ student }: { student: StudentListEntry }) 
                     <button
                       type="button"
                       onClick={() => handleOpenApplication(app)}
-                      className="flex w-full items-center justify-between gap-4 px-4 py-2.5 text-left text-sm text-ink hover:bg-white/5"
+                      className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left text-sm hover:bg-white/5"
                     >
-                      <span className="truncate">{app.label || `Application ${app.id}`}</span>
-                      <i className="ri-arrow-right-s-line text-muted" aria-hidden="true" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-ink">
+                          {app.application_id || `Application ${app.id}`}
+                          {app.date && <span className="font-normal text-muted"> · {app.date}</span>}
+                        </p>
+                        <p className="mt-0.5 truncate text-muted">
+                          {[app.university, app.program].filter(Boolean).join(" — ") || "—"}
+                        </p>
+                        <div className="mt-1.5 flex items-center gap-2">
+                          {app.status && <StatusPill status={app.status} />}
+                          {app.country && <span className="text-xs text-muted">{app.country}</span>}
+                        </div>
+                      </div>
+                      <i className="ri-arrow-right-s-line shrink-0 text-muted" aria-hidden="true" />
                     </button>
                   </li>
                 ))}

@@ -65,6 +65,25 @@ fn text_field(row: &Value, key: &str) -> String {
     row.get(key).and_then(Value::as_str).unwrap_or_default().trim().to_string()
 }
 
+/// The `visa` field bundles the status badge together with an unrelated
+/// second line (the university name), e.g.
+/// `<p class='mb-1 badge bg-success'>Visa Granted</p>
+///  <p class='mb-1'>The University of Waikato</p>`
+/// — only the badge's own text is the actual visa status, so this targets
+/// the badge-classed element specifically rather than stripping tags from
+/// the whole blob (which would concatenate both lines together). Falls
+/// back to plain tag-stripping if no badge-classed element is found, so a
+/// differently-shaped value still shows something instead of going blank.
+fn parse_visa_status(raw: &str) -> String {
+    let fragment = Html::parse_fragment(raw);
+    if let Ok(badge_selector) = Selector::parse("[class*='badge']") {
+        if let Some(badge) = fragment.select(&badge_selector).next() {
+            return badge.text().collect::<String>().trim().to_string();
+        }
+    }
+    fragment.root_element().text().collect::<String>().trim().to_string()
+}
+
 /// Parses one aenapply.com `/students` DataTables row.
 fn parse_row(row: &Value) -> StudentListEntry {
     let id = row.get("student_id").map(value_to_string).unwrap_or_default();
@@ -85,7 +104,7 @@ fn parse_row(row: &Value) -> StudentListEntry {
         mobile: text_field(row, "mobile"),
         branch: text_field(row, "associate"),
         country: text_field(row, "countries_id"),
-        visa_status: text_field(row, "visa"),
+        visa_status: row.get("visa").and_then(Value::as_str).map(parse_visa_status).unwrap_or_default(),
         counselor: text_field(row, "counselor_assigned"),
         status,
     }
@@ -150,6 +169,17 @@ mod tests {
         assert_eq!(s.visa_status, "Not Applied");
         assert_eq!(s.counselor, "Ramesh Gurung");
         assert_eq!(s.status, "Active");
+    }
+
+    #[test]
+    fn visa_status_extracts_only_the_badge_text() {
+        let mut row = sample_row();
+        row["visa"] = json!(
+            "<p class='mb-1 badge bg-success'>Visa Granted</p> <p class='mb-1'>The University of Waikato</p>"
+        );
+        let raw = json!({ "recordsTotal": 1, "recordsFiltered": 1, "data": [row] });
+        let result = parse_students_list_response(&raw).unwrap();
+        assert_eq!(result.students[0].visa_status, "Visa Granted");
     }
 
     #[test]

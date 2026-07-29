@@ -123,12 +123,17 @@ export interface StudentListResult {
   students: StudentListEntry[];
 }
 
-/** A link to one of a student's individual applications, scraped from their
+/** One row of a student's individual applications table, scraped from their
  * `/students/show/{id}` profile page — `id` is the `offerapplication_id`,
  * usable with the existing offerapplications detail fetch. */
 export interface StudentApplicationLink {
   id: string;
-  label: string;
+  application_id: string;
+  date: string;
+  country: string;
+  university: string;
+  program: string;
+  status: string;
 }
 
 /** Which sidebar "Students" item is selected — "all", or one specific

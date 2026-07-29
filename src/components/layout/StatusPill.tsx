@@ -25,6 +25,10 @@ const STATUS_FAMILIES: { keyword: string; family: ColorFamily }[] = [
   { keyword: "agent change application", family: "amber" },
   { keyword: "agent change not allowed", family: "amber" },
   { keyword: "incomplete documents", family: "orange" },
+  { keyword: "visa granted", family: "green" },
+  { keyword: "visa rejected", family: "red" },
+  { keyword: "visa withdraw", family: "red" },
+  { keyword: "visa applied", family: "blue" },
 ];
 
 // Dark mode: brightened colors as text on a 15%-opacity tint of themselves —

@@ -208,9 +208,9 @@ pub async fn search_students_list(
     list_parser::parse_students_list_response(&raw)
 }
 
-/// Best-effort fetch of a student's individual application links from their
-/// `/students/show/{id}` profile page — see applications_link_parser.rs for
-/// the "unverified" caveat.
+/// Best-effort fetch of a student's individual applications table from
+/// their `/students/show/{id}` profile page — see
+/// applications_link_parser.rs for the "unverified" caveat.
 pub async fn get_student_applications(
     app: &AppHandle,
     state: &AppState,
