@@ -30,7 +30,7 @@ interface ExpandableGroupDef {
  * by screen navigation. `collapsed` is lifted to App.tsx so the main
  * content area's left padding can track the sidebar's actual fixed width. */
 export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
-  const { screen, goToSearch, goToStudentsList, goToSettings } = useAppContext();
+  const { screen, goToDashboard, goToSearch, goToStudentsList, goToSettings } = useAppContext();
   const { activeSection, setActiveSection } = useStudentsContext();
   const { filter: studentsFilter, setFilter: setStudentsFilter } = useStudentListContext();
   const { options: filterOptions } = useFilterOptions();
@@ -100,8 +100,19 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
       </div>
 
       <div className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
+        <button
+          type="button"
+          onClick={goToDashboard}
+          title={collapsed ? "Dashboard" : undefined}
+          aria-label="Dashboard"
+          className={itemClass(screen.name === "dashboard")}
+        >
+          <i className="ri-dashboard-line text-lg leading-none" aria-hidden="true" />
+          {!collapsed && <span>Dashboard</span>}
+        </button>
+
         {!collapsed && (
-          <p className="px-3 pb-2 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted">Students</p>
+          <p className="px-3 pb-2 pt-4 text-[11px] font-semibold uppercase tracking-wider text-muted">Students</p>
         )}
 
         <button

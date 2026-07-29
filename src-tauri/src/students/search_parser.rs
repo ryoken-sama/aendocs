@@ -112,8 +112,11 @@ fn parse_program_fields(html: &str) -> (String, String, String) {
     (country, university, program)
 }
 
-/// Parses one aenapply.com `/offerapplications` DataTables row.
-fn parse_row(row: &Value) -> StudentSummary {
+/// Parses one aenapply.com `/offerapplications` DataTables row. `pub(crate)`
+/// so the dashboard's "Recent Applications" fetch (a different request
+/// shape — extra `updated_at` column/sort — but the same row structure) can
+/// reuse it instead of duplicating the HTML parsing.
+pub(crate) fn parse_row(row: &Value) -> StudentSummary {
     let student_html = row.get("student").and_then(Value::as_str).unwrap_or_default();
     let program_html = row.get("program").and_then(Value::as_str).unwrap_or_default();
     let application_id = row

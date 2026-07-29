@@ -54,7 +54,26 @@ pub async fn login(client: &Client, email: &str, password: &str) -> Result<(), A
 /// Idempotent session guard: logs in using the stored email/keyring password
 /// only if there isn't already a live session, so callers (search, detail,
 /// download) never need to sequence login themselves.
+///
+/// Double-checked locking: dashboard load alone fires ~15-20 of these in
+/// parallel on a cold session, and without the lock every single one would
+/// see "not logged in" and independently start its own login flow against
+/// the same cookie-jar `http_client` — wasteful (N redundant login POSTs
+/// instead of one) and actively broken (concurrent logins race on that one
+/// shared cookie jar, so some end up with a clobbered/invalid session
+/// cookie). The first caller through the lock does the real login; every
+/// caller that was waiting behind it re-checks the session — now populated
+/// by the winner — and returns immediately instead of logging in again.
 pub async fn ensure_logged_in(app: &AppHandle, state: &AppState) -> Result<(), AppError> {
+    {
+        let session = state.session.read().expect("session lock poisoned");
+        if session.as_ref().is_some_and(|s| s.logged_in) {
+            return Ok(());
+        }
+    }
+
+    let _login_guard = state.login_lock.lock().await;
+
     {
         let session = state.session.read().expect("session lock poisoned");
         if session.as_ref().is_some_and(|s| s.logged_in) {

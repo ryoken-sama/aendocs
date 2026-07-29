@@ -3,9 +3,11 @@ import { AppProvider, useAppContext } from "./context/AppContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { StudentsProvider } from "./context/StudentsContext";
 import { StudentListProvider } from "./context/StudentListContext";
+import { DashboardProvider } from "./context/DashboardContext";
 import { UpdateProvider, useUpdateContext } from "./context/UpdateContext";
 import { NavBar } from "./components/layout/NavBar";
 import { Sidebar } from "./components/layout/Sidebar";
+import { DashboardScreen } from "./components/dashboard/DashboardScreen";
 import { SettingsScreen } from "./components/settings/SettingsScreen";
 import { SearchScreen } from "./components/search/SearchScreen";
 import { DetailScreen } from "./components/detail/DetailScreen";
@@ -17,6 +19,8 @@ function Screens() {
   const { screen } = useAppContext();
 
   switch (screen.name) {
+    case "dashboard":
+      return <DashboardScreen />;
     case "settings":
       return <SettingsScreen />;
     case "search":
@@ -56,9 +60,11 @@ function App() {
       <AppProvider>
         <StudentsProvider>
           <StudentListProvider>
-            <UpdateProvider>
-              <AppShell />
-            </UpdateProvider>
+            <DashboardProvider>
+              <UpdateProvider>
+                <AppShell />
+              </UpdateProvider>
+            </DashboardProvider>
           </StudentListProvider>
         </StudentsProvider>
       </AppProvider>

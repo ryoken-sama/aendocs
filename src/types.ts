@@ -35,6 +35,14 @@ export interface StudentSummary {
   status: string;
 }
 
+/** One row of the dashboard's "Recent Applications" panel — an
+ * offerapplication plus its (best-effort, see dashboard.rs) update
+ * timestamp, used only for the relative "2 hours ago" display. */
+export interface RecentApplication {
+  student: StudentSummary;
+  updated_at: string;
+}
+
 export interface StudentSearchResult {
   records_total: number;
   records_filtered: number;

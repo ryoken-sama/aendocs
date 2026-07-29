@@ -43,6 +43,7 @@ pub fn run() {
             commands::get_document_categories,
             commands::search_students_list,
             commands::get_student_applications,
+            commands::get_recent_applications,
             commands::download_and_organize,
         ])
         .run(tauri::generate_context!())

@@ -1,4 +1,5 @@
 mod applications_link_parser;
+mod dashboard;
 mod detail_parser;
 mod filter_options_parser;
 mod html_util;
@@ -7,6 +8,7 @@ mod search_parser;
 mod section;
 
 pub use applications_link_parser::StudentApplicationLink;
+pub use dashboard::{get_recent_applications, RecentApplication};
 pub use detail_parser::StudentDetail;
 pub use filter_options_parser::FilterOptions;
 pub use list_parser::StudentListResult;

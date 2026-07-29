@@ -7,8 +7,8 @@ use crate::errors::AppError;
 use crate::keyring_store;
 use crate::profile::{self, UserProfile};
 use crate::students::{
-    self, FilterOptions, SearchFilters, Section, StudentApplicationLink, StudentDetail, StudentListResult,
-    StudentSearchResult, StudentSummary, StudentsListFilter,
+    self, FilterOptions, RecentApplication, SearchFilters, Section, StudentApplicationLink, StudentDetail,
+    StudentListResult, StudentSearchResult, StudentSummary, StudentsListFilter,
 };
 use std::collections::HashMap;
 use tauri::{AppHandle, State};
@@ -124,6 +124,15 @@ pub async fn get_student_applications(
     students_id: String,
 ) -> Result<Vec<StudentApplicationLink>, AppError> {
     students::get_student_applications(&app, &state, &students_id).await
+}
+
+#[tauri::command]
+pub async fn get_recent_applications(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    length: u32,
+) -> Result<Vec<RecentApplication>, AppError> {
+    students::get_recent_applications(&app, &state, length).await
 }
 
 #[tauri::command]

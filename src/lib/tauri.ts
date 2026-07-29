@@ -3,6 +3,7 @@ import type {
   DownloadSummary,
   FilterOptions,
   LoginResult,
+  RecentApplication,
   SectionKey,
   ServerFilters,
   Settings,
@@ -95,4 +96,8 @@ export function searchStudentsList(
 
 export function getStudentApplications(studentsId: string): Promise<StudentApplicationLink[]> {
   return invoke("get_student_applications", { studentsId });
+}
+
+export function getRecentApplications(length: number): Promise<RecentApplication[]> {
+  return invoke("get_recent_applications", { length });
 }
