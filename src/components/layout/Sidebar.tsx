@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { SECTIONS } from "../../constants";
+import { SECTIONS, SECTION_PERMISSION_KEY } from "../../constants";
 import { useAppContext } from "../../context/AppContext";
 import { useStudentsContext } from "../../context/StudentsContext";
 import { useStudentListContext } from "../../context/StudentListContext";
 import { useDashboardContext } from "../../context/DashboardContext";
+import { usePermissionsContext } from "../../context/PermissionsContext";
 import { useFilterOptions } from "../../hooks/useFilterOptions";
-import type { FilterOption, SectionKey, StudentsFilterSelection } from "../../types";
+import type { FilterOption, PermissionKey, SectionKey, StudentsFilterSelection } from "../../types";
 import aenLogo from "../../assets/aen-logo.png";
 import accessIcon from "../../assets/access-icon.png";
 
@@ -23,6 +24,12 @@ interface ExpandableGroupDef {
   items: FilterOption[];
 }
 
+const GROUP_PERMISSION_KEY: Record<ExpandableGroupKey, PermissionKey> = {
+  branch: "by_branch",
+  agent: "by_agent",
+  country: "by_country",
+};
+
 /** Collapsible left-hand navigation with two groups: "Students" (a roster
  * browsable by branch/agent/country, expandable submenus populated from the
  * already-fetched filter dropdown lists) and "Study Abroad" (the 7
@@ -36,6 +43,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const { filter: studentsFilter, setFilter: setStudentsFilter } = useStudentListContext();
   const { refresh: refreshDashboard } = useDashboardContext();
   const { options: filterOptions } = useFilterOptions();
+  const { can } = usePermissionsContext();
   const [expandedGroup, setExpandedGroup] = useState<ExpandableGroupKey | null>(null);
 
   const isDashboard = screen.name === "dashboard";
@@ -82,11 +90,16 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const studyAbroadActive = screen.name === "search" || screen.name === "detail";
   const settingsActive = screen.name === "settings";
 
-  const expandableGroups: ExpandableGroupDef[] = [
+  const allGroups: ExpandableGroupDef[] = [
     { key: "branch", label: "By Branch", icon: "ri-building-4-line", items: filterOptions.branch },
     { key: "agent", label: "By Agent", icon: "ri-user-star-line", items: filterOptions.agent },
     { key: "country", label: "By Country", icon: "ri-earth-line", items: filterOptions.country },
   ];
+  const expandableGroups = allGroups.filter((group) => can(GROUP_PERMISSION_KEY[group.key]));
+
+  const visibleSections = SECTIONS.filter((section) => can(SECTION_PERMISSION_KEY[section.key]));
+  const canSeeAllStudents = can("all_students");
+  const studentsGroupVisible = canSeeAllStudents || expandableGroups.length > 0;
 
   return (
     <nav
@@ -134,20 +147,22 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           {!collapsed && <span>Dashboard</span>}
         </button>
 
-        {!collapsed && (
+        {studentsGroupVisible && !collapsed && (
           <p className="px-3 pb-2 pt-4 text-[11px] font-semibold uppercase tracking-wider text-muted">Students</p>
         )}
 
-        <button
-          type="button"
-          onClick={() => handleSelectStudentsFilter({ type: "all" })}
-          title={collapsed ? "All Students" : undefined}
-          aria-label="All Students"
-          className={itemClass(studentsListActive && studentsFilter.type === "all")}
-        >
-          <i className="ri-team-line text-lg leading-none" aria-hidden="true" />
-          {!collapsed && <span>All Students</span>}
-        </button>
+        {canSeeAllStudents && (
+          <button
+            type="button"
+            onClick={() => handleSelectStudentsFilter({ type: "all" })}
+            title={collapsed ? "All Students" : undefined}
+            aria-label="All Students"
+            className={itemClass(studentsListActive && studentsFilter.type === "all")}
+          >
+            <i className="ri-team-line text-lg leading-none" aria-hidden="true" />
+            {!collapsed && <span>All Students</span>}
+          </button>
+        )}
 
         {expandableGroups.map((group) => {
           const isExpanded = !collapsed && expandedGroup === group.key;
@@ -203,11 +218,11 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           );
         })}
 
-        {!collapsed && (
+        {visibleSections.length > 0 && !collapsed && (
           <p className="px-3 pb-2 pt-4 text-[11px] font-semibold uppercase tracking-wider text-muted">Study Abroad</p>
         )}
 
-        {SECTIONS.map((section) => {
+        {visibleSections.map((section) => {
           const active = studyAbroadActive && activeSection === section.key;
           return (
             <button

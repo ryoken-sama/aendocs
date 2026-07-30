@@ -1,11 +1,9 @@
 use crate::app_state::AppState;
 use crate::auth;
-use crate::config;
 use crate::errors::AppError;
 use reqwest::Client;
 use scraper::{ElementRef, Html, Selector};
 use serde::Serialize;
-use tauri::AppHandle;
 
 const PROFILE_URL: &str = "https://aenapply.com/profile";
 
@@ -81,12 +79,26 @@ async fn fetch_user_profile(client: &Client) -> Option<UserProfile> {
     parse_profile_html(&html)
 }
 
+/// The signed-in email — used as a last-resort display name fallback. Reads
+/// the in-memory credentials (set by `sign_in`/`auto_login`) rather than
+/// saved settings, since a "don't remember me" session never writes its
+/// email to disk but is still the account actually logged in right now.
+fn current_email(state: &AppState) -> String {
+    state
+        .credentials
+        .read()
+        .expect("credentials lock poisoned")
+        .as_ref()
+        .map(|c| c.email.clone())
+        .unwrap_or_default()
+}
+
 /// Returns the cached profile if this session already fetched one;
 /// otherwise ensures login, fetches, caches, and returns it. Never fails
-/// the caller over a profile-fetch problem — degrades to the configured
+/// the caller over a profile-fetch problem — degrades to the signed-in
 /// email (if the name specifically couldn't be found) and no photo.
-pub async fn get_profile(app: &AppHandle, state: &AppState) -> Result<UserProfile, AppError> {
-    auth::ensure_logged_in(app, state).await?;
+pub async fn get_profile(state: &AppState) -> Result<UserProfile, AppError> {
+    auth::ensure_logged_in(state).await?;
 
     {
         let cached = state.profile.read().expect("profile lock poisoned");
@@ -99,12 +111,12 @@ pub async fn get_profile(app: &AppHandle, state: &AppState) -> Result<UserProfil
     let resolved = match fetched {
         Some(mut profile) => {
             if profile.name.is_empty() {
-                profile.name = config::load_settings(app).map(|s| s.email).unwrap_or_default();
+                profile.name = current_email(state);
             }
             profile
         }
         None => UserProfile {
-            name: config::load_settings(app).map(|s| s.email).unwrap_or_default(),
+            name: current_email(state),
             photo_url: None,
         },
     };

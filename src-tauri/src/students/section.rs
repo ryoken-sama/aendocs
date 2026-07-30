@@ -48,6 +48,22 @@ impl Section {
         format!("https://aenapply.com/offerapplications{}", self.path_suffix())
     }
 
+    /// The key this section is probed/reported under in the permissions
+    /// map (see `permissions.rs`) — distinct from `from_key`'s sidebar
+    /// navigation keys, matching the exact naming the permissions feature
+    /// was specified with.
+    pub fn permission_key(self) -> &'static str {
+        match self {
+            Section::Applications => "student_applications",
+            Section::Applied => "offer_applied",
+            Section::Issued => "offer_issued",
+            Section::Processing => "processing",
+            Section::Withdrawn => "visa_withdraw",
+            Section::Rejected => "visa_rejected",
+            Section::Granted => "visa_granted",
+        }
+    }
+
     /// The exact `columns[]` this view's DataTables endpoint expects, in
     /// order. `student` is always column 0, matching the
     /// `order[0][column]=0` / `order[0][name]=student` sent on every
@@ -115,6 +131,24 @@ mod tests {
     #[test]
     fn applied_url_has_suffix() {
         assert_eq!(Section::Applied.url(), "https://aenapply.com/offerapplications/applied");
+    }
+
+    #[test]
+    fn every_section_has_a_distinct_permission_key() {
+        let sections = [
+            Section::Applications,
+            Section::Applied,
+            Section::Issued,
+            Section::Processing,
+            Section::Withdrawn,
+            Section::Rejected,
+            Section::Granted,
+        ];
+        let keys: Vec<&str> = sections.iter().map(|s| s.permission_key()).collect();
+        let mut unique = keys.clone();
+        unique.sort_unstable();
+        unique.dedup();
+        assert_eq!(unique.len(), keys.len(), "expected all permission keys to be distinct: {keys:?}");
     }
 
     #[test]

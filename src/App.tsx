@@ -1,10 +1,7 @@
 import { useState } from "react";
-import { AppProvider, useAppContext } from "./context/AppContext";
+import { useAppContext } from "./context/AppContext";
 import { ThemeProvider } from "./context/ThemeContext";
-import { StudentsProvider } from "./context/StudentsContext";
-import { StudentListProvider } from "./context/StudentListContext";
-import { DashboardProvider } from "./context/DashboardContext";
-import { UpdateProvider, useUpdateContext } from "./context/UpdateContext";
+import { useUpdateContext } from "./context/UpdateContext";
 import { NavBar } from "./components/layout/NavBar";
 import { Sidebar } from "./components/layout/Sidebar";
 import { DashboardScreen } from "./components/dashboard/DashboardScreen";
@@ -14,7 +11,7 @@ import { DetailScreen } from "./components/detail/DetailScreen";
 import { StudentsListScreen } from "./components/students-list/StudentsListScreen";
 import { StudentDetailScreen } from "./components/students-list/StudentDetailScreen";
 import { UpdateModal } from "./components/layout/UpdateModal";
-import { SplashGate } from "./components/layout/SplashGate";
+import { AuthGate } from "./components/auth/AuthGate";
 
 function Screens() {
   const { screen } = useAppContext();
@@ -58,19 +55,9 @@ function AppShell() {
 function App() {
   return (
     <ThemeProvider>
-      <AppProvider>
-        <StudentsProvider>
-          <StudentListProvider>
-            <DashboardProvider>
-              <UpdateProvider>
-                <SplashGate>
-                  <AppShell />
-                </SplashGate>
-              </UpdateProvider>
-            </DashboardProvider>
-          </StudentListProvider>
-        </StudentsProvider>
-      </AppProvider>
+      <AuthGate>
+        <AppShell />
+      </AuthGate>
     </ThemeProvider>
   );
 }

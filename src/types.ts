@@ -1,12 +1,7 @@
 export interface Settings {
   email: string;
   output_folder: string;
-}
-
-export interface SettingsInput {
-  email: string;
-  output_folder: string;
-  password?: string | null;
+  remember_me: boolean;
 }
 
 export interface LoginResult {
@@ -144,3 +139,25 @@ export type StudentsFilterSelection =
   | { type: "branch"; id: string; label: string }
   | { type: "agent"; id: string; label: string }
   | { type: "country"; id: string; label: string };
+
+/** The 11 endpoints probed once per login to build the permissions map —
+ * must stay in sync with the keys `permissions.rs` probes/reports under on
+ * the Rust side (`Section::permission_key` for the 7 offerapplications
+ * ones, plus the 4 `/students`-domain keys). */
+export type PermissionKey =
+  | "student_applications"
+  | "offer_applied"
+  | "offer_issued"
+  | "processing"
+  | "visa_withdraw"
+  | "visa_rejected"
+  | "visa_granted"
+  | "all_students"
+  | "by_branch"
+  | "by_agent"
+  | "by_country";
+
+/** `permission_key -> accessible`. Always has all 11 `PermissionKey`s once
+ * probing has completed, but typed as a partial record since it arrives
+ * as a plain JS object from the backend with no runtime guarantee. */
+export type PermissionsMap = Partial<Record<PermissionKey, boolean>>;

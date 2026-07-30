@@ -5,7 +5,6 @@ use crate::auth;
 use crate::errors::AppError;
 use serde::Serialize;
 use serde_json::Value;
-use tauri::AppHandle;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RecentApplication {
@@ -14,22 +13,24 @@ pub struct RecentApplication {
 }
 
 /// Fetches the most recently updated applications for the dashboard's
-/// "Recent Applications" panel.
+/// "Recent Applications" panel — or, when the caller passes `Section::
+/// Granted` instead, the same shape of query against `/offerapplications/
+/// granted` for the "Recent Visa Grants" fallback shown when the account
+/// can't see `Section::Applications` at all (see DashboardScreen).
 ///
 /// UNVERIFIED: aenapply's own UI has no equivalent "recent across all
 /// statuses, newest first" view, so there's no confirmed request shape to
-/// copy. This appends `updated_at` as an extra requested column after
-/// Section::Applications' normal set and points `order[0]` at it — if the
-/// server doesn't honor that, the panel still renders real rows, just not
+/// copy. This appends `updated_at` as an extra requested column after the
+/// section's normal set and points `order[0]` at it — if the server
+/// doesn't honor that, the panel still renders real rows, just not
 /// necessarily in recency order.
 pub async fn get_recent_applications(
-    app: &AppHandle,
     state: &AppState,
+    section: Section,
     length: u32,
 ) -> Result<Vec<RecentApplication>, AppError> {
-    auth::ensure_logged_in(app, state).await?;
+    auth::ensure_logged_in(state).await?;
 
-    let section = Section::Applications;
     let mut columns: Vec<&str> = section.columns().to_vec();
     columns.push("updated_at");
     let sort_index = columns.len() - 1;
@@ -60,15 +61,7 @@ pub async fn get_recent_applications(
     params.push(("order[0][dir]".to_string(), "desc".to_string()));
     params.push(("order[0][name]".to_string(), "updated_at".to_string()));
 
-    let response = state
-        .http_client
-        .get(section.url())
-        .header("X-Requested-With", "XMLHttpRequest")
-        .query(&params)
-        .send()
-        .await?;
-
-    let raw: Value = response.json().await?;
+    let raw = super::datatables_client::fetch_datatables_json(state, &section.url(), &params).await?;
     let data = raw
         .get("data")
         .and_then(Value::as_array)

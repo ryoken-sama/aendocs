@@ -9,6 +9,7 @@ mod errors;
 mod http_client;
 mod keyring_store;
 mod path_builder;
+mod permissions;
 mod profile;
 mod progress;
 mod rename_rules;
@@ -33,8 +34,12 @@ pub fn run() {
             commands::get_user_profile,
             commands::logout,
             commands::get_settings,
-            commands::save_settings,
-            commands::test_login,
+            commands::save_output_folder,
+            commands::sign_in,
+            commands::auto_login,
+            commands::change_account,
+            commands::force_relogin,
+            commands::get_permissions,
             commands::get_theme_preference,
             commands::save_theme_preference,
             commands::search_students,

@@ -1,20 +1,18 @@
 import aenLogo from "../../assets/aen-logo.png";
 
-export type SplashPhase = "connecting" | "verifying" | "loading-data" | "almost-ready";
+export type SplashPhase = "signing-in" | "loading-data" | "almost-ready";
 
 const PHASE_TEXT: Record<SplashPhase, string> = {
-  connecting: "Connecting to aenapply.com…",
-  verifying: "Verifying session…",
+  "signing-in": "Signing in…",
   "loading-data": "Loading dashboard data…",
   "almost-ready": "Almost ready…",
 };
 
 // A real (not indeterminate) percentage tied to actual phase transitions —
-// see SplashGate for what triggers each one.
+// see AuthGate/DashboardSplashGate for what triggers each one.
 const PHASE_PROGRESS: Record<SplashPhase, number> = {
-  connecting: 15,
-  verifying: 40,
-  "loading-data": 70,
+  "signing-in": 20,
+  "loading-data": 60,
   "almost-ready": 100,
 };
 
@@ -23,10 +21,11 @@ interface SplashScreenProps {
   phase: SplashPhase;
 }
 
-/** Full-screen branded overlay shown while the app initializes — see
- * SplashGate for the timing/dismissal/phase logic. Hardcodes the dark
- * background (#111117) and white text regardless of the user's saved
- * theme, since this is a fixed brand moment, not a themed screen. */
+/** Full-screen branded overlay shown while signing in and while the
+ * dashboard's initial data loads (see AuthGate and DashboardSplashGate for
+ * the timing/dismissal/phase logic). Hardcodes the dark background
+ * (#111117) and white text regardless of the user's saved theme, since
+ * this is a fixed brand moment, not a themed screen. */
 export function SplashScreen({ fadingOut, phase }: SplashScreenProps) {
   return (
     <div

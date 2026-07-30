@@ -1,5 +1,6 @@
 mod applications_link_parser;
 mod dashboard;
+mod datatables_client;
 mod detail_parser;
 mod filter_options_parser;
 mod html_util;
@@ -19,14 +20,13 @@ use crate::app_state::AppState;
 use crate::auth;
 use crate::config;
 use crate::errors::AppError;
-use serde_json::Value;
 use std::path::PathBuf;
 use tauri::AppHandle;
 
 const STUDENTS_URL: &str = "https://aenapply.com/offerapplications";
 const STUDENT_DETAIL_URL_BASE: &str = "https://aenapply.com/offerapplications/show";
 const FILTER_OPTIONS_CACHE_FILE: &str = "filter_options_cache.json";
-const STUDENTS_LIST_URL: &str = "https://aenapply.com/students";
+pub(crate) const STUDENTS_LIST_URL: &str = "https://aenapply.com/students";
 const STUDENT_PROFILE_URL_BASE: &str = "https://aenapply.com/students/show";
 
 /// The exact `columns[]` the `/students` DataTables endpoint expects, in
@@ -56,7 +56,6 @@ pub struct SearchFilters<'a> {
 }
 
 pub async fn search_students(
-    app: &AppHandle,
     state: &AppState,
     query: &str,
     start: u32,
@@ -64,7 +63,7 @@ pub async fn search_students(
     section: Section,
     filters: &SearchFilters<'_>,
 ) -> Result<StudentSearchResult, AppError> {
-    auth::ensure_logged_in(app, state).await?;
+    auth::ensure_logged_in(state).await?;
 
     let mut params: Vec<(String, String)> = vec![
         ("draw".to_string(), "1".to_string()),
@@ -121,15 +120,7 @@ pub async fn search_students(
     // aenapply's DataTables endpoints only support GET here — a POST with
     // the same form-encoded body comes back 200 but without a `data` array,
     // so despite the large query string this has to stay GET.
-    let response = state
-        .http_client
-        .get(section.url())
-        .header("X-Requested-With", "XMLHttpRequest")
-        .query(&params)
-        .send()
-        .await?;
-
-    let raw: Value = response.json().await?;
+    let raw = datatables_client::fetch_datatables_json(state, &section.url(), &params).await?;
     search_parser::parse_datatables_response(&raw)
 }
 
@@ -144,14 +135,13 @@ pub struct StudentsListFilter<'a> {
 }
 
 pub async fn search_students_list(
-    app: &AppHandle,
     state: &AppState,
     query: &str,
     start: u32,
     length: u32,
     filter: &StudentsListFilter<'_>,
 ) -> Result<StudentListResult, AppError> {
-    auth::ensure_logged_in(app, state).await?;
+    auth::ensure_logged_in(state).await?;
 
     let mut params: Vec<(String, String)> = vec![
         ("draw".to_string(), "1".to_string()),
@@ -196,15 +186,7 @@ pub async fn search_students_list(
         n += 1;
     }
 
-    let response = state
-        .http_client
-        .get(STUDENTS_LIST_URL)
-        .header("X-Requested-With", "XMLHttpRequest")
-        .query(&params)
-        .send()
-        .await?;
-
-    let raw: Value = response.json().await?;
+    let raw = datatables_client::fetch_datatables_json(state, STUDENTS_LIST_URL, &params).await?;
     list_parser::parse_students_list_response(&raw)
 }
 
@@ -212,23 +194,18 @@ pub async fn search_students_list(
 /// their `/students/show/{id}` profile page — see
 /// applications_link_parser.rs for the "unverified" caveat.
 pub async fn get_student_applications(
-    app: &AppHandle,
     state: &AppState,
     students_id: &str,
 ) -> Result<Vec<StudentApplicationLink>, AppError> {
-    auth::ensure_logged_in(app, state).await?;
+    auth::ensure_logged_in(state).await?;
 
     let url = format!("{STUDENT_PROFILE_URL_BASE}/{students_id}");
     let html = state.http_client.get(&url).send().await?.text().await?;
     Ok(applications_link_parser::parse_student_applications_html(&html))
 }
 
-pub async fn get_student_detail(
-    app: &AppHandle,
-    state: &AppState,
-    student_id: &str,
-) -> Result<StudentDetail, AppError> {
-    auth::ensure_logged_in(app, state).await?;
+pub async fn get_student_detail(state: &AppState, student_id: &str) -> Result<StudentDetail, AppError> {
+    auth::ensure_logged_in(state).await?;
 
     let url = format!("{STUDENT_DETAIL_URL_BASE}/{student_id}");
     let html = state.http_client.get(&url).send().await?.text().await?;
@@ -256,7 +233,7 @@ pub async fn get_filter_options(app: &AppHandle, state: &AppState) -> Result<Fil
         }
     }
 
-    auth::ensure_logged_in(app, state).await?;
+    auth::ensure_logged_in(state).await?;
 
     let html = state.http_client.get(STUDENTS_URL).send().await?.text().await?;
     let options = filter_options_parser::parse_filter_options_html(&html);

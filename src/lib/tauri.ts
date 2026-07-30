@@ -3,11 +3,11 @@ import type {
   DownloadSummary,
   FilterOptions,
   LoginResult,
+  PermissionsMap,
   RecentApplication,
   SectionKey,
   ServerFilters,
   Settings,
-  SettingsInput,
   StudentApplicationLink,
   StudentDetail,
   StudentListResult,
@@ -21,6 +21,9 @@ export function getUserProfile(): Promise<UserProfile> {
   return invoke("get_user_profile");
 }
 
+/** Clears the session and, if "Remember me" was on for the saved account,
+ * forgets it (keyring + settings) too — otherwise just the session, since
+ * an un-remembered session had nothing else saved to clear. */
 export function logout(): Promise<void> {
   return invoke("logout");
 }
@@ -29,12 +32,35 @@ export function getSettings(): Promise<Settings> {
   return invoke("get_settings");
 }
 
-export function saveSettings(settings: SettingsInput): Promise<void> {
-  return invoke("save_settings", { settings });
+export function saveOutputFolder(outputFolder: string): Promise<void> {
+  return invoke("save_output_folder", { outputFolder });
 }
 
-export function testLogin(): Promise<LoginResult> {
-  return invoke("test_login");
+/** The Login screen's explicit sign-in. On success, persists the
+ * credentials to the keyring/settings only if `rememberMe`. */
+export function signIn(email: string, password: string, rememberMe: boolean): Promise<LoginResult> {
+  return invoke("sign_in", { email, password, rememberMe });
+}
+
+/** Launch-time silent login using a previously "remembered" account.
+ * Resolves `null` (not a failure) when there's nothing saved — the caller
+ * should show the Login screen directly in that case, not an error. */
+export function autoLogin(): Promise<LoginResult | null> {
+  return invoke("auto_login");
+}
+
+/** Settings screen's "Change Account": unconditionally clears the session
+ * and any saved keyring/account, regardless of "Remember me". */
+export function changeAccount(): Promise<void> {
+  return invoke("change_account");
+}
+
+/** Clears the (possibly stale) session and forces a real login before the
+ * next request — used by the dashboard's "Retry" button so it's guaranteed
+ * to attempt a fresh login rather than just refetching against a session
+ * that may already be dead. */
+export function forceRelogin(): Promise<void> {
+  return invoke("force_relogin");
 }
 
 export function getThemePreference(): Promise<ThemePreference> {
@@ -98,6 +124,16 @@ export function getStudentApplications(studentsId: string): Promise<StudentAppli
   return invoke("get_student_applications", { studentsId });
 }
 
-export function getRecentApplications(length: number): Promise<RecentApplication[]> {
-  return invoke("get_recent_applications", { length });
+/** `section` picks which endpoint's "most recently updated" rows to
+ * fetch — normally "applications", but the dashboard falls back to
+ * "granted" ("Recent Visa Grants") when the account can't see
+ * `/offerapplications` at all. */
+export function getRecentApplications(section: SectionKey, length: number): Promise<RecentApplication[]> {
+  return invoke("get_recent_applications", { section, length });
+}
+
+/** Cached per-login on the backend — probes every endpoint once, so this
+ * is cheap to call repeatedly (e.g. on a dashboard refresh). */
+export function getPermissions(): Promise<PermissionsMap> {
+  return invoke("get_permissions");
 }

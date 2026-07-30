@@ -1,4 +1,4 @@
-import type { SectionKey } from "./types";
+import type { PermissionKey, SectionKey } from "./types";
 
 export const APP_NAME = "AEN Document Manager";
 
@@ -22,3 +22,16 @@ export const SECTIONS: SectionDef[] = [
   { key: "rejected", label: "Visa Rejected", icon: "ri-close-circle-line" },
   { key: "granted", label: "Visa Granted", icon: "ri-checkbox-circle-line" },
 ];
+
+/** Maps each Study Abroad section to the permissions map key it's probed
+ * under — must stay in sync with `Section::permission_key` in the Rust
+ * backend (src-tauri/src/students/section.rs). */
+export const SECTION_PERMISSION_KEY: Record<SectionKey, PermissionKey> = {
+  applications: "student_applications",
+  applied: "offer_applied",
+  issued: "offer_issued",
+  processing: "processing",
+  withdrawn: "visa_withdraw",
+  rejected: "visa_rejected",
+  granted: "visa_granted",
+};

@@ -193,7 +193,7 @@ async fn run(
     );
 
     emitter.emit(ProgressStep::LoggingIn, ProgressLevel::Info, "Checking session…");
-    auth::ensure_logged_in(app, state).await?;
+    auth::ensure_logged_in(state).await?;
 
     emitter.emit(
         ProgressStep::DownloadingZip,

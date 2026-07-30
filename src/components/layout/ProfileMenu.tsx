@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { open } from "@tauri-apps/plugin-shell";
 import { getUserProfile, logout } from "../../lib/tauri";
-import { useAppContext } from "../../context/AppContext";
+import { useAuthContext } from "../../context/AuthContext";
 import type { UserProfile } from "../../types";
 
 const PORTAL_URL = "https://aenapply.com";
@@ -11,7 +11,7 @@ const PORTAL_URL = "https://aenapply.com";
  * the profile fetch resolves) that opens a small dropdown with the user's
  * name, a link to the live aenapply portal, and logout. */
 export function ProfileMenu() {
-  const { goToSettings } = useAppContext();
+  const { signOut } = useAuthContext();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -52,11 +52,11 @@ export function ProfileMenu() {
     logout()
       .catch(() => {
         // Logging out is a local session clear on our side regardless —
-        // still navigate away even if the command itself failed.
+        // still return to the Login screen even if the command itself
+        // failed.
       })
       .finally(() => {
-        setProfile(null);
-        goToSettings();
+        signOut();
       });
   }
 
