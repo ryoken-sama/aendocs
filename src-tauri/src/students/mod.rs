@@ -216,26 +216,55 @@ fn filter_options_cache_path(app: &AppHandle) -> Result<PathBuf, AppError> {
     Ok(config::app_data_dir(app)?.join(FILTER_OPTIONS_CACHE_FILE))
 }
 
-/// Fetches the plain (non-AJAX) `/offerapplications` page and parses its
-/// filter dropdowns (Branch, Agent, Country, Institution) into id -> name
-/// mappings for the search screen's server-side filter comboboxes.
+/// `/offerapplications` and `/students` both carry the same Branch/Agent/
+/// Country `<select>` dropdowns (only `/offerapplications` also has
+/// Institution) — but restricted accounts (e.g. visa officers) get a 403 on
+/// `/offerapplications` while still having access to `/students`. Tries
+/// `/offerapplications` first (it's the only source for Institution, and
+/// the common case), falling back to `/students` specifically on a 403 so
+/// those accounts still get real Branch/Agent/Country options instead of
+/// the empty lists that read as "None loaded yet" in the sidebar. Any
+/// other failure (a different status, a network error) propagates as-is —
+/// only a 403 on the first page is treated as "try the fallback".
+async fn fetch_filter_options_html(state: &AppState) -> Result<String, AppError> {
+    let response = state.http_client.get(STUDENTS_URL).send().await?;
+    if response.status() == reqwest::StatusCode::FORBIDDEN {
+        return Ok(state.http_client.get(STUDENTS_LIST_URL).send().await?.text().await?);
+    }
+    Ok(response.text().await?)
+}
+
+/// Fetches and parses the filter dropdowns (Branch, Agent, Country,
+/// Institution) into id -> name mappings for the search screen's
+/// server-side filter comboboxes — see `fetch_filter_options_html` for
+/// which page(s) that comes from.
 ///
 /// These lists rarely change, so — unlike student records, which are never
 /// cached — they're read from a disk cache when one exists, skipping the
 /// live fetch entirely. A fresh install (or a deleted cache file) falls
 /// back to fetching and parsing the page live, then writes the result for
-/// next time.
+/// next time. A cache that came from before this fallback existed (all
+/// four lists empty, from a 403 that had nothing to parse) is treated as
+/// not actually cached, so accounts stuck on a stale empty result get a
+/// fresh live fetch — and the fix — on their next launch rather than
+/// forever reading the old empty file.
 pub async fn get_filter_options(app: &AppHandle, state: &AppState) -> Result<FilterOptions, AppError> {
     let cache_path = filter_options_cache_path(app)?;
     if let Ok(raw) = std::fs::read_to_string(&cache_path) {
         if let Ok(cached) = serde_json::from_str::<FilterOptions>(&raw) {
-            return Ok(cached);
+            let has_any_data = !cached.branch.is_empty()
+                || !cached.agent.is_empty()
+                || !cached.country.is_empty()
+                || !cached.institution.is_empty();
+            if has_any_data {
+                return Ok(cached);
+            }
         }
     }
 
     auth::ensure_logged_in(state).await?;
 
-    let html = state.http_client.get(STUDENTS_URL).send().await?.text().await?;
+    let html = fetch_filter_options_html(state).await?;
     let options = filter_options_parser::parse_filter_options_html(&html);
 
     if let Ok(raw) = serde_json::to_string_pretty(&options) {

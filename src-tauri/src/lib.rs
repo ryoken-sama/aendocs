@@ -27,6 +27,7 @@ pub fn run() {
         .manage(AppState::new())
         .setup(|app| {
             let handle = app.handle().clone();
+            config::clear_stale_cache_on_update(&handle)?;
             config::ensure_university_requirements_exists(&handle)?;
             Ok(())
         })
