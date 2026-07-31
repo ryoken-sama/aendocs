@@ -85,9 +85,9 @@ fn log_unexpected_body(
 ///    along with a `download_url` to fetch it from — not the ZIP itself.
 /// 2. GET that `download_url` to fetch the actual ZIP bytes.
 ///
-/// Uses `state.http_client` — the single shared, cookie-store-enabled client
-/// also used for login — for both requests, so the session cookie is sent
-/// automatically; no manual cookie handling is needed.
+/// Uses `state.http_client()` — the single shared, cookie-store-enabled
+/// client also used for login — for both requests, so the session cookie
+/// is sent automatically; no manual cookie handling is needed.
 async fn fetch_zip_bytes(
     client: &reqwest::Client,
     make_zip_url: &str,
@@ -200,7 +200,7 @@ async fn run(
         ProgressLevel::Info,
         "Fetching CSRF token…",
     );
-    let csrf_token = fetch_csrf_token(&state.http_client, &student.id).await?;
+    let csrf_token = fetch_csrf_token(&state.http_client(), &student.id).await?;
 
     emitter.emit(
         ProgressStep::DownloadingZip,
@@ -208,7 +208,7 @@ async fn run(
         "Downloading document ZIP…",
     );
     let url = format!("{MAKE_ZIP_URL_BASE}/{}/make-zip", student.id);
-    let bytes = fetch_zip_bytes(&state.http_client, &url, &csrf_token, emitter).await?;
+    let bytes = fetch_zip_bytes(&state.http_client(), &url, &csrf_token, emitter).await?;
 
     emitter.emit(ProgressStep::ExtractingZip, ProgressLevel::Info, "Extracting ZIP…");
     let cursor = Cursor::new(bytes);

@@ -42,7 +42,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const { activeSection, setActiveSection } = useStudentsContext();
   const { filter: studentsFilter, setFilter: setStudentsFilter } = useStudentListContext();
   const { refresh: refreshDashboard } = useDashboardContext();
-  const { options: filterOptions } = useFilterOptions();
+  const { options: filterOptions, error: filterOptionsError } = useFilterOptions();
   const { can } = usePermissionsContext();
   const [expandedGroup, setExpandedGroup] = useState<ExpandableGroupKey | null>(null);
 
@@ -193,7 +193,9 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
               {isExpanded && (
                 <div className="ml-4 flex flex-col gap-0.5 border-l border-border py-1 pl-2">
                   {group.items.length === 0 ? (
-                    <p className="px-3 py-1.5 text-xs text-muted">None loaded yet</p>
+                    <p className={`px-3 py-1.5 text-xs ${filterOptionsError ? "text-red-400" : "text-muted"}`}>
+                      {filterOptionsError ? "Couldn't load — try refreshing" : "None loaded yet"}
+                    </p>
                   ) : (
                     group.items.map((item) => {
                       const active = isGroupActive && studentsFilter.type === group.key && studentsFilter.id === item.id;

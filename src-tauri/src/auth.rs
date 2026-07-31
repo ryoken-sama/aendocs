@@ -2,6 +2,7 @@ use crate::app_state::{AppState, Credentials, SessionInfo};
 use crate::config;
 use crate::errors::AppError;
 use crate::keyring_store;
+use crate::students;
 use reqwest::Client;
 use scraper::{Html, Selector};
 use serde::Serialize;
@@ -57,17 +58,27 @@ fn clear_session(state: &AppState) {
     *session = None;
 }
 
-/// Clears the in-memory session, credentials, AND cached permissions map —
-/// after this, `ensure_logged_in` will fail (return "not logged in") until
-/// a fresh `sign_in`/`auto_login` happens, and the next one re-probes
-/// permissions rather than reusing a possibly different account's results.
-/// Does not touch anything on disk (saved settings/keyring) — see
+/// Clears the in-memory session, credentials, cached permissions map, AND
+/// the shared HTTP client's cookie jar (see `AppState::reset_http_client`)
+/// — after this, `ensure_logged_in` will fail (return "not logged in")
+/// until a fresh `sign_in`/`auto_login` happens, and the next one re-probes
+/// permissions and starts from an empty cookie jar rather than reusing a
+/// possibly different account's results or session cookie. The cookie
+/// jar reset matters as much as the rest: without it, the old aenapply.com
+/// session cookie stays valid and attached to every request, and a
+/// subsequent login attempt (even as a different account) can get
+/// redirected away from `/login` by the server's own "already
+/// authenticated" guard before the new credentials are ever checked —
+/// `login()` would read that as success while the server is still
+/// authenticated as whoever was logged in before. Does not touch anything
+/// on disk (saved settings/keyring) — see
 /// `logout_and_maybe_forget`/`change_account` for that.
 pub fn logout(state: &AppState) {
     clear_session(state);
     let mut creds = state.credentials.write().expect("credentials lock poisoned");
     *creds = None;
     crate::permissions::clear(state);
+    state.reset_http_client();
 }
 
 /// The one place that actually performs a login HTTP round-trip and, on
@@ -76,7 +87,7 @@ pub fn logout(state: &AppState) {
 /// can silently re-login — see `ensure_logged_in`) and `state.session`.
 /// Callers are responsible for holding `login_lock` around this.
 async fn perform_login(state: &AppState, email: &str, password: &str) -> Result<(), AppError> {
-    login(&state.http_client, email, password).await?;
+    login(&state.http_client(), email, password).await?;
     {
         let mut creds = state.credentials.write().expect("credentials lock poisoned");
         *creds = Some(Credentials {
@@ -215,9 +226,14 @@ pub async fn auto_login(app: &AppHandle, state: &AppState) -> Result<Option<Logi
 /// Profile-menu "Logout": clears the session (and in-memory credentials)
 /// always; additionally forgets the saved keyring/account only if
 /// "Remember me" was on for it — a session that was never remembered has
-/// nothing else to clear.
+/// nothing else to clear. Always clears the on-disk filter options cache
+/// (see `students::clear_filter_options_cache`) regardless of "Remember
+/// me": whoever signs in next — same account or a different one — should
+/// never see a previous account's cached Branch/Agent/Country/Institution
+/// lists.
 pub fn logout_and_maybe_forget(app: &AppHandle, state: &AppState) -> Result<(), AppError> {
     logout(state);
+    students::clear_filter_options_cache(app)?;
     let settings = config::load_settings(app)?;
     if settings.remember_me && !settings.email.is_empty() {
         keyring_store::delete_password(&settings.email)?;
@@ -226,11 +242,13 @@ pub fn logout_and_maybe_forget(app: &AppHandle, state: &AppState) -> Result<(), 
     Ok(())
 }
 
-/// Settings screen's "Change Account": unconditionally clears the session
-/// and any saved keyring/account, regardless of whether "Remember me" was
-/// on — this is an explicit "let me sign in as someone else" action.
+/// Settings screen's "Change Account": unconditionally clears the session,
+/// any saved keyring/account, and the filter options cache, regardless of
+/// whether "Remember me" was on — this is an explicit "let me sign in as
+/// someone else" action.
 pub fn change_account(app: &AppHandle, state: &AppState) -> Result<(), AppError> {
     logout(state);
+    students::clear_filter_options_cache(app)?;
     let settings = config::load_settings(app)?;
     if !settings.email.is_empty() {
         keyring_store::delete_password(&settings.email)?;

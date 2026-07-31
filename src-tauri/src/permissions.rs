@@ -70,7 +70,7 @@ async fn probe_permissions(state: &AppState) -> PermissionsMap {
     let mut set: JoinSet<(String, bool)> = JoinSet::new();
 
     for section in ALL_SECTIONS {
-        let client = state.http_client.clone();
+        let client = state.http_client();
         let url = section.url();
         let key = section.permission_key().to_string();
         set.spawn(async move {
@@ -80,7 +80,7 @@ async fn probe_permissions(state: &AppState) -> PermissionsMap {
     }
 
     for (key, extra_params) in STUDENTS_PROBES {
-        let client = state.http_client.clone();
+        let client = state.http_client();
         let key = key.to_string();
         let extra_params = *extra_params;
         set.spawn(async move {

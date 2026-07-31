@@ -14,7 +14,7 @@ async fn send_datatables_request(
     params: &[(String, String)],
 ) -> Result<Option<Value>, AppError> {
     let response = state
-        .http_client
+        .http_client()
         .get(url)
         .header("X-Requested-With", "XMLHttpRequest")
         .query(params)

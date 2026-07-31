@@ -107,7 +107,7 @@ pub async fn get_profile(state: &AppState) -> Result<UserProfile, AppError> {
         }
     }
 
-    let fetched = fetch_user_profile(&state.http_client).await;
+    let fetched = fetch_user_profile(&state.http_client()).await;
     let resolved = match fetched {
         Some(mut profile) => {
             if profile.name.is_empty() {

@@ -200,7 +200,7 @@ pub async fn get_student_applications(
     auth::ensure_logged_in(state).await?;
 
     let url = format!("{STUDENT_PROFILE_URL_BASE}/{students_id}");
-    let html = state.http_client.get(&url).send().await?.text().await?;
+    let html = state.http_client().get(&url).send().await?.text().await?;
     Ok(applications_link_parser::parse_student_applications_html(&html))
 }
 
@@ -208,7 +208,7 @@ pub async fn get_student_detail(state: &AppState, student_id: &str) -> Result<St
     auth::ensure_logged_in(state).await?;
 
     let url = format!("{STUDENT_DETAIL_URL_BASE}/{student_id}");
-    let html = state.http_client.get(&url).send().await?.text().await?;
+    let html = state.http_client().get(&url).send().await?.text().await?;
     detail_parser::parse_student_detail_html(&html)
 }
 
@@ -216,60 +216,235 @@ fn filter_options_cache_path(app: &AppHandle) -> Result<PathBuf, AppError> {
     Ok(config::app_data_dir(app)?.join(FILTER_OPTIONS_CACHE_FILE))
 }
 
+/// Deletes the on-disk filter options cache, if any. Called whenever the
+/// logged-in account changes (logout, change account — see
+/// `auth::logout_and_maybe_forget`/`auth::change_account`) so a newly
+/// signed-in account can never see a previous one's cached Branch/Agent/
+/// Country/Institution lists.
+pub fn clear_filter_options_cache(app: &AppHandle) -> Result<(), AppError> {
+    let path = filter_options_cache_path(app)?;
+    if path.exists() {
+        std::fs::remove_file(path)?;
+    }
+    Ok(())
+}
+
+/// True if any of Branch/Agent/Country is empty — Institution excluded,
+/// since it's expected to be empty for many roles. Doubles as both "should
+/// `fetch_filter_options` try the `/students` fallback" and "is a cached
+/// `FilterOptions` too incomplete to trust" (see `get_filter_options`).
+fn needs_fallback(options: &FilterOptions) -> bool {
+    options.branch.is_empty() || options.agent.is_empty() || options.country.is_empty()
+}
+
+/// Fills any of Branch/Agent/Country that are empty in `primary` with the
+/// corresponding list from `fallback` — a per-category merge, not a
+/// wholesale swap, since a restricted account might be missing only one or
+/// two of these from `/offerapplications` while the rest are fine.
+/// Institution is never touched: `/students` has no equivalent dropdown for
+/// it, so `fallback.institution` is meaningless here.
+fn merge_filter_options(mut primary: FilterOptions, fallback: FilterOptions) -> FilterOptions {
+    if primary.branch.is_empty() {
+        primary.branch = fallback.branch;
+    }
+    if primary.agent.is_empty() {
+        primary.agent = fallback.agent;
+    }
+    if primary.country.is_empty() {
+        primary.country = fallback.country;
+    }
+    primary
+}
+
 /// `/offerapplications` and `/students` both carry the same Branch/Agent/
 /// Country `<select>` dropdowns (only `/offerapplications` also has
-/// Institution) — but restricted accounts (e.g. visa officers) get a 403 on
-/// `/offerapplications` while still having access to `/students`. Tries
-/// `/offerapplications` first (it's the only source for Institution, and
-/// the common case), falling back to `/students` specifically on a 403 so
-/// those accounts still get real Branch/Agent/Country options instead of
-/// the empty lists that read as "None loaded yet" in the sidebar. Any
-/// other failure (a different status, a network error) propagates as-is —
-/// only a 403 on the first page is treated as "try the fallback".
-async fn fetch_filter_options_html(state: &AppState) -> Result<String, AppError> {
-    let response = state.http_client.get(STUDENTS_URL).send().await?;
-    if response.status() == reqwest::StatusCode::FORBIDDEN {
-        return Ok(state.http_client.get(STUDENTS_LIST_URL).send().await?.text().await?);
+/// Institution) — but restricted accounts (e.g. visa officers) don't
+/// necessarily get a clean 403 on `/offerapplications`; some roles get a
+/// 200 whose page simply omits some of those selects. Rather than branch
+/// on status code, this always parses whichever page it fetches and, if
+/// any of Branch/Agent/Country came back empty, separately fetches
+/// `/students` and merges in from there (see `merge_filter_options`) — a
+/// 403 isn't the only way a category can end up missing. The fallback
+/// fetch is best-effort (swallowed on failure): whatever the primary page
+/// already had stands, rather than losing it over a failed second request.
+fn log_filter_options_fetch(label: &str, url: &str, status: reqwest::StatusCode, options: &FilterOptions) {
+    // Temporary diagnostic aid — same convention as the dashboard-fetch
+    // logging in datatables_client.rs — for seeing exactly what a
+    // restricted account's requests actually return, which we have no way
+    // to verify without live credentials for that account.
+    eprintln!(
+        "[filter-options] {label} url={url} status={status} branch={} agent={} country={} institution={}",
+        options.branch.len(),
+        options.agent.len(),
+        options.country.len(),
+        options.institution.len(),
+    );
+}
+
+async fn fetch_filter_options(state: &AppState) -> Result<FilterOptions, AppError> {
+    let primary_response = state.http_client().get(STUDENTS_URL).send().await?;
+    let primary_status = primary_response.status();
+    let primary_html = primary_response.text().await?;
+    let options = filter_options_parser::parse_filter_options_html(&primary_html);
+    log_filter_options_fetch("primary", STUDENTS_URL, primary_status, &options);
+
+    if !needs_fallback(&options) {
+        return Ok(options);
     }
-    Ok(response.text().await?)
+
+    eprintln!(
+        "[filter-options] primary page missing branch/agent/country (branch={} agent={} country={}) — firing fallback to {STUDENTS_LIST_URL}",
+        options.branch.len(),
+        options.agent.len(),
+        options.country.len(),
+    );
+
+    let Ok(response) = state.http_client().get(STUDENTS_LIST_URL).send().await else {
+        eprintln!("[filter-options] fallback request to {STUDENTS_LIST_URL} failed (network error)");
+        return Ok(options);
+    };
+    let fallback_status = response.status();
+    let Ok(fallback_html) = response.text().await else {
+        eprintln!("[filter-options] fallback body read failed (status={fallback_status})");
+        return Ok(options);
+    };
+
+    let fallback = filter_options_parser::parse_filter_options_html(&fallback_html);
+    log_filter_options_fetch("fallback", STUDENTS_LIST_URL, fallback_status, &fallback);
+    let merged = merge_filter_options(options, fallback);
+    eprintln!(
+        "[filter-options] merged result: branch={} agent={} country={} institution={}",
+        merged.branch.len(),
+        merged.agent.len(),
+        merged.country.len(),
+        merged.institution.len(),
+    );
+    Ok(merged)
 }
 
 /// Fetches and parses the filter dropdowns (Branch, Agent, Country,
 /// Institution) into id -> name mappings for the search screen's
-/// server-side filter comboboxes — see `fetch_filter_options_html` for
-/// which page(s) that comes from.
+/// server-side filter comboboxes — see `fetch_filter_options` for which
+/// page(s) that comes from.
 ///
 /// These lists rarely change, so — unlike student records, which are never
 /// cached — they're read from a disk cache when one exists, skipping the
-/// live fetch entirely. A fresh install (or a deleted cache file) falls
-/// back to fetching and parsing the page live, then writes the result for
-/// next time. A cache that came from before this fallback existed (all
-/// four lists empty, from a 403 that had nothing to parse) is treated as
-/// not actually cached, so accounts stuck on a stale empty result get a
-/// fresh live fetch — and the fix — on their next launch rather than
-/// forever reading the old empty file.
+/// live fetch entirely. A fresh install (or a deleted cache file, e.g.
+/// from `clear_filter_options_cache` on logout) falls back to fetching and
+/// parsing live, then writes the result for next time. A cache missing
+/// Branch, Agent, or Country — Institution isn't required, since it's
+/// expected to be empty for many roles — is treated as not really cached,
+/// so an account stuck on an incomplete result (the exact bug
+/// `fetch_filter_options`'s merge fixes) gets a fresh live attempt, with
+/// the fix, on its very next launch — not just after an explicit logout —
+/// rather than reading the same incomplete file forever. The tradeoff: an
+/// account with genuinely no Branch/Agent access from either source will
+/// never see this cache "validate" and re-fetches live every launch —
+/// cheap (one or two page GETs), and correct behavior beats a
+/// permanently-stuck cache.
 pub async fn get_filter_options(app: &AppHandle, state: &AppState) -> Result<FilterOptions, AppError> {
     let cache_path = filter_options_cache_path(app)?;
     if let Ok(raw) = std::fs::read_to_string(&cache_path) {
         if let Ok(cached) = serde_json::from_str::<FilterOptions>(&raw) {
-            let has_any_data = !cached.branch.is_empty()
-                || !cached.agent.is_empty()
-                || !cached.country.is_empty()
-                || !cached.institution.is_empty();
-            if has_any_data {
+            if !needs_fallback(&cached) {
+                eprintln!(
+                    "[filter-options] served from cache: branch={} agent={} country={} institution={}",
+                    cached.branch.len(),
+                    cached.agent.len(),
+                    cached.country.len(),
+                    cached.institution.len(),
+                );
                 return Ok(cached);
             }
+            eprintln!(
+                "[filter-options] cache present but incomplete (branch={} agent={} country={}) — re-fetching live",
+                cached.branch.len(),
+                cached.agent.len(),
+                cached.country.len(),
+            );
         }
     }
 
     auth::ensure_logged_in(state).await?;
 
-    let html = fetch_filter_options_html(state).await?;
-    let options = filter_options_parser::parse_filter_options_html(&html);
+    let options = fetch_filter_options(state).await?;
 
     if let Ok(raw) = serde_json::to_string_pretty(&options) {
         let _ = std::fs::write(&cache_path, raw);
     }
 
     Ok(options)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use filter_options_parser::FilterOption;
+
+    fn option(id: &str, name: &str) -> FilterOption {
+        FilterOption { id: id.to_string(), name: name.to_string() }
+    }
+
+    #[test]
+    fn needs_fallback_when_branch_is_empty_even_if_others_are_not() {
+        let options = FilterOptions {
+            branch: vec![],
+            agent: vec![option("1", "Agent One")],
+            country: vec![option("1", "New Zealand")],
+            institution: vec![],
+        };
+        assert!(needs_fallback(&options));
+    }
+
+    #[test]
+    fn does_not_need_fallback_when_institution_is_the_only_empty_one() {
+        // Institution has no /students equivalent, so its being empty is
+        // normal and shouldn't trigger a second fetch on its own.
+        let options = FilterOptions {
+            branch: vec![option("1", "Branch One")],
+            agent: vec![option("1", "Agent One")],
+            country: vec![option("1", "New Zealand")],
+            institution: vec![],
+        };
+        assert!(!needs_fallback(&options));
+    }
+
+    #[test]
+    fn merge_fills_in_only_the_empty_categories_per_field() {
+        // This is the exact bug being fixed: /offerapplications returned a
+        // 200 with Country populated but Branch and Agent empty (a
+        // restricted role, not a clean 403) — the merge must fill in just
+        // those two from /students, not overwrite Country with whatever
+        // (possibly different) list /students happens to have.
+        let primary = FilterOptions {
+            branch: vec![],
+            agent: vec![],
+            country: vec![option("1", "New Zealand")],
+            institution: vec![option("9", "Victoria University")],
+        };
+        let fallback = FilterOptions {
+            branch: vec![option("3", "Access Pokhara")],
+            agent: vec![option("12", "Ramesh Gurung")],
+            country: vec![option("1", "New Zealand (from /students)")],
+            institution: vec![],
+        };
+
+        let merged = merge_filter_options(primary, fallback);
+
+        assert_eq!(merged.branch, vec![option("3", "Access Pokhara")]);
+        assert_eq!(merged.agent, vec![option("12", "Ramesh Gurung")]);
+        // Country was already populated from the primary source — kept as-is.
+        assert_eq!(merged.country, vec![option("1", "New Zealand")]);
+        // Institution has no /students source and was already populated —
+        // untouched either way.
+        assert_eq!(merged.institution, vec![option("9", "Victoria University")]);
+    }
+
+    #[test]
+    fn merge_leaves_everything_empty_if_fallback_is_also_empty() {
+        let merged = merge_filter_options(FilterOptions::default(), FilterOptions::default());
+        assert!(merged.branch.is_empty());
+        assert!(merged.agent.is_empty());
+        assert!(merged.country.is_empty());
+    }
 }
